@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>grd. — Coming Soon</title>
+  <meta name="description" content="grd. The new standard in trading card grading. Coming soon." />
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --fg:#0b0f14;
+      --muted:#5f6b7a;
+      --line:rgba(11,15,20,.12);
+      --line2:rgba(11,15,20,.08);
+
+      --shadow: 0 22px 70px rgba(11,15,20,.12);
+      --shadow2: 0 14px 40px rgba(11,15,20,.10);
+
+      --radius: 24px;
+      --radius2: 18px;
+
+      --glass: rgba(255,255,255,.55);
+      --glassStrong: rgba(255,255,255,.72);
+
+      --focus: 0 0 0 4px rgba(11,15,20,.10);
+
+      /* Parallax vars */
+      --mx: 50%;
+      --my: 35%;
+      --tiltX: 0deg;
+      --tiltY: 0deg;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--fg);
+      overflow-x:hidden;
+
+      /* Apple-ish ambient depth */
+      background:
+        radial-gradient(900px 500px at 20% 10%, rgba(11,15,20,.08), transparent 55%),
+        radial-gradient(900px 600px at 80% 20%, rgba(11,15,20,.06), transparent 60%),
+        radial-gradient(800px 800px at 70% 85%, rgba(11,15,20,.05), transparent 55%),
+        radial-gradient(600px 420px at var(--mx) var(--my), rgba(11,15,20,.06), transparent 55%),
+        var(--bg);
+    }
+
+    a{color:inherit; text-decoration:none}
+    .wrap{min-height:100vh; display:flex; flex-direction:column;}
+
+    header{
+      padding:26px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      max-width:1120px;
+      width:100%;
+      margin:0 auto;
+    }
+
+    .brand{display:flex; align-items:center; gap:12px;}
+    .logo{
+      font-weight:850;
+      letter-spacing:-0.06em;
+      font-size:28px;
+      line-height:1;
+      user-select:none;
+    }
+
+    .pill{
+      border:1px solid var(--line);
+      padding:10px 12px;
+      border-radius:999px;
+      font-size:13px;
+      color:var(--muted);
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    main{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:26px 24px 42px;
+    }
+
+    .card{
+      width:min(1120px, 100%);
+      display:grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap:22px;
+      align-items:stretch;
+    }
+
+    @media (max-width: 900px){
+      .card{grid-template-columns:1fr; gap:16px}
+    }
+
+    /* --- Apple Glass Cards --- */
+    .panel{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius: var(--radius);
+      background: var(--glass);
+      backdrop-filter: blur(22px) saturate(1.25);
+      -webkit-backdrop-filter: blur(22px) saturate(1.25);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+
+      transform: translateY(10px);
+      opacity:0;
+      animation: inUp .75s cubic-bezier(.2,.8,.2,1) forwards;
+      will-change: transform, opacity;
+    }
+    .panel:nth-child(2){animation-delay:.08s}
+
+    @keyframes inUp{
+      to{transform: translateY(0); opacity:1;}
+    }
+
+    /* Glass edge refraction + highlight */
+    .panel::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(700px 320px at 15% 10%, rgba(255,255,255,.58), transparent 62%),
+        radial-gradient(520px 260px at 85% 18%, rgba(255,255,255,.34), transparent 62%),
+        linear-gradient(180deg, rgba(255,255,255,.24), transparent 35%, rgba(255,255,255,.10));
+      pointer-events:none;
+      opacity:.75;
+      mix-blend-mode: screen;
+    }
+
+    /* Inner rim like Apple glass */
+    .panel::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    .panel-inner{padding:28px; position:relative;}
+
+    .kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font-size:13px;
+      color:var(--muted);
+      border:1px solid var(--line);
+      padding:10px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      margin-bottom:18px;
+    }
+
+    .dot{
+      width:10px;height:10px;border-radius:999px;background:var(--fg);
+      box-shadow: 0 0 0 4px rgba(11,15,20,.08);
+    }
+
+    h1{
+      margin:0 0 12px 0;
+      font-size: clamp(34px, 4vw, 58px);
+      line-height:1.02;
+      letter-spacing:-0.065em;
+    }
+
+    .sub{
+      margin:0 0 18px 0;
+      font-size: 16px;
+      color:var(--muted);
+      line-height:1.68;
+      max-width: 62ch;
+    }
+
+    /* Trust chips */
+    .trust{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin: 10px 0 6px;
+    }
+    .chip{
+      font-size:12px;
+      color:var(--muted);
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .chip:hover{transform: translateY(-1px); border-color: rgba(11,15,20,.16);}
+
+    /* --- Conversion Optimized Form Layout --- */
+    .form{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      align-items:start;
+      margin-top: 14px;
+    }
+    @media (max-width: 520px){
+      .form{grid-template-columns: 1fr;}
+    }
+
+    .field{min-width: 240px;}
+    input[type="email"]{
+      width:100%;
+      padding:14px 14px;
+      border-radius:14px;
+      border:1px solid rgba(11,15,20,.12);
+      outline:none;
+      font-size:14px;
+      background: rgba(255,255,255,.82);
+      color:var(--fg);
+      transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    input[type="email"]:focus{
+      box-shadow: var(--focus);
+      border-color: rgba(11,15,20,.25);
+      transform: translateY(-1px);
+    }
+
+    button{
+      padding:14px 16px;
+      border-radius:14px;
+      border:1px solid rgba(11,15,20,.16);
+      background: var(--fg);
+      color: #fff;
+      font-weight:780;
+      letter-spacing:-0.01em;
+      font-size:14px;
+      cursor:pointer;
+      transition: transform .12s ease, opacity .18s ease, box-shadow .18s ease;
+      box-shadow: 0 14px 30px rgba(11,15,20,.16);
+      will-change: transform;
+    }
+    button:hover{opacity:.95; transform: translateY(-1px);}
+    button:active{transform: translateY(0); box-shadow: 0 10px 22px rgba(11,15,20,.14);}
+
+    .fineprint{
+      margin:10px 0 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    /* Ultra-minimal captcha reveal */
+    .captcha-wrap{
+      grid-column: 1 / -1;
+      display:none;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(11,15,20,.12);
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      min-height:58px;
+      transform: translateY(6px);
+      opacity:0;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+    .captcha-wrap.show{
+      display:flex;
+      opacity:1;
+      transform: translateY(0);
+    }
+    .captcha-wrap iframe{border-radius:10px !important;}
+    .captcha-note{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    /* Feature cards */
+    .features{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+      margin-top: 18px;
+    }
+    @media (max-width: 900px){
+      .features{grid-template-columns:1fr;}
+    }
+    .feat{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:18px;
+      padding:14px 14px;
+      background: rgba(255,255,255,.56);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .feat:hover{transform: translateY(-2px); border-color: rgba(11,15,20,.16);}
+    .feat strong{
+      display:block;
+      font-size:13px;
+      letter-spacing:-0.01em;
+      margin-bottom:4px;
+    }
+    .feat span{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.4;
+    }
+
+    /* --- Slab: interactive Apple-style tilt + sheen --- */
+    .slabStage{
+      position:relative;
+      height: 100%;
+      border-radius: var(--radius);
+      overflow:hidden;
+    }
+
+    /* Ambient spotlight behind slab */
+    .spotlight{
+      position:absolute;
+      inset:-20%;
+      background:
+        radial-gradient(500px 320px at var(--mx) var(--my), rgba(255,255,255,.55), transparent 60%),
+        radial-gradient(700px 520px at 70% 20%, rgba(255,255,255,.25), transparent 65%),
+        radial-gradient(600px 600px at 30% 80%, rgba(11,15,20,.05), transparent 60%);
+      filter: blur(8px);
+      opacity:.9;
+      pointer-events:none;
+      transform: translateZ(0);
+    }
+
+    .slab{
+      position:relative;
+      border-radius: 28px;
+      border:1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(22px) saturate(1.2);
+      -webkit-backdrop-filter: blur(22px) saturate(1.2);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+
+      transform-style: preserve-3d;
+      transform: perspective(950px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateY(0);
+      transition: transform .22s cubic-bezier(.2,.8,.2,1);
+      will-change: transform;
+    }
+
+    /* Floating micro motion */
+    .slab.floating{
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float{
+      0%,100%{ transform: perspective(950px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateY(0); }
+      50%{ transform: perspective(950px) rotateX(var(--tiltX)) rotateY(var(--tiltY)) translateY(-6px); }
+    }
+
+    /* Dynamic sheen */
+    .slab::before{
+      content:"";
+      position:absolute;
+      inset:-55%;
+      background: linear-gradient(120deg, transparent 38%, rgba(255,255,255,.55) 50%, transparent 62%);
+      transform: translateX(-30%) rotate(18deg);
+      animation: sheen 4.5s ease-in-out infinite;
+      pointer-events:none;
+      opacity:.8;
+      mix-blend-mode: screen;
+    }
+    @keyframes sheen{
+      0%{transform: translateX(-45%) rotate(18deg);}
+      50%{transform: translateX(10%) rotate(18deg);}
+      100%{transform: translateX(55%) rotate(18deg);}
+    }
+
+    /* Inner rim */
+    .slab::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
+      pointer-events:none;
+    }
+
+    .rightTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom: 16px;
+    }
+    .label{
+      font-size:12px;
+      color:var(--muted);
+      margin:0 0 6px;
+    }
+    .grade{
+      font-weight:930;
+      letter-spacing:-0.06em;
+      font-size: 46px;
+      line-height:1;
+      margin:0;
+    }
+    .grade small{
+      font-size:14px;
+      letter-spacing:-0.01em;
+      color:var(--muted);
+      font-weight:700;
+      margin-left:10px;
+    }
+
+    .qr{
+      width:68px;
+      height:68px;
+      border-radius:16px;
+      border:1px solid rgba(11,15,20,.10);
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+      background: rgba(255,255,255,.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .qr svg{width:48px;height:48px;opacity:.85}
+
+    .spec{
+      border-top:1px solid var(--line2);
+      margin-top: 16px;
+      padding-top: 16px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px 16px;
+    }
+    .row{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:14px;
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      font-size:13px;
+      color:var(--muted);
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .row:hover{transform: translateY(-1px); border-color: rgba(11,15,20,.16);}
+    .row b{color:var(--fg); font-weight:820}
+
+    .serial{
+      margin-top: 14px;
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      border-top:1px solid var(--line2);
+      padding-top:14px;
+    }
+
+    .footer{
+      max-width:1120px;
+      margin:0 auto;
+      width:100%;
+      padding: 0 24px 26px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      color:var(--muted);
+      font-size:12px;
+      flex-wrap:wrap;
+    }
+    .links{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .links a{
+      padding:8px 10px;
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      background:rgba(255,255,255,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: transform .18s ease, opacity .18s ease;
+    }
+    .links a:hover{transform: translateY(-1px); opacity:.95;}
+    .sep{opacity:.4}
+
+    .sr-only{
+      position:absolute;
+      width:1px;height:1px;
+      padding:0;margin:-1px;
+      overflow:hidden;clip:rect(0,0,0,0);
+      white-space:nowrap;border:0;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{animation:none !important; transition:none !important;}
+      .panel{opacity:1; transform:none;}
+      .slab{transform:none;}
+      body{background: var(--bg);}
+    }
+  </style>
+
+  <!-- Web3Forms “Zero-config hCaptcha” client script -->
+  <script src="https://web3forms.com/client/script.js" async defer></script>
+</head>
+
+<body>
+  <div class="wrap" id="root">
+    <header>
+      <div class="brand" aria-label="grd brand">
+        <div class="logo">grd.</div>
+      </div>
+      <div class="pill">Coming soon</div>
+    </header>
+
+    <main>
+      <section class="card" aria-label="Coming soon hero">
+        <!-- Left: Message + email capture -->
+        <div class="panel">
+          <div class="panel-inner">
+            <div class="kicker"><span class="dot" aria-hidden="true"></span> The new standard in card grading</div>
+            <h1>Precision graded.<br/>Collector-first.</h1>
+
+            <p class="sub">
+              Transparent reports, clean slabs, and instant verification—built for modern collectors.
+              Join the list for launch updates and early access.
+            </p>
+
+            <div class="trust" aria-label="Trust chips">
+              <span class="chip">No spam</span>
+              <span class="chip">Early access</span>
+              <span class="chip">Fast turnaround</span>
+              <span class="chip">Instant verification</span>
+            </div>
+
+            <!-- ✅ EMAIL COLLECTION (WEB3FORMS + Ultra-minimal hCAPTCHA) -->
+            <form class="form"
+                  id="notifyForm"
+                  action="https://api.web3forms.com/submit"
+                  method="POST">
+
+              <input type="hidden" name="access_key" value="3d04287c-1528-408c-bc97-be9ff02bba1f" />
+              <input type="hidden" name="subject" value="grd. waitlist signup" />
+              <input type="hidden" name="from_name" value="grd. landing page" />
+              <input type="hidden" name="redirect" value="https://grd.cards/thank-you.html" />
+
+              <div class="field">
+                <label class="sr-only" for="email">Email</label>
+                <input id="email" name="email" type="email" placeholder="you@domain.com" required inputmode="email" autocomplete="email" />
+                <p class="fineprint">No spam. Just launch news, product drops, and early access.</p>
+              </div>
+
+              <button type="submit" id="submitBtn">Notify me</button>
+
+              <!-- Ultra-minimal captcha reveal -->
+              <div class="captcha-wrap" id="captchaWrap" aria-label="Captcha verification">
+                <div class="h-captcha"
+                     data-captcha="true"
+                     data-theme="light"
+                     data-size="compact"></div>
+                <div class="captcha-note">Quick check to keep bots out.</div>
+              </div>
+            </form>
+
+            <div class="features" aria-label="Key features">
+              <div class="feat">
+                <strong>Transparent reports</strong>
+                <span>Subgrades + digital certificate.</span>
+              </div>
+              <div class="feat">
+                <strong>Fast turnaround</strong>
+                <span>Modern workflow, clear tracking.</span>
+              </div>
+              <div class="feat">
+                <strong>Instant verification</strong>
+                <span>QR/NFC-ready authenticity checks.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Slab label-inspired preview (interactive tilt + sheen) -->
+        <div class="panel" id="slabPanel">
+          <div class="panel-inner slabStage">
+            <div class="spotlight" aria-hidden="true"></div>
+
+            <div class="slab floating" id="slab">
+              <div class="panel-inner" style="padding:24px;">
+                <div class="rightTop">
+                  <div>
+                    <p class="label">Preview</p>
+                    <p class="grade">GRD 10 <small>Perfect</small></p>
+                  </div>
+                  <div class="qr" aria-label="QR placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M4 4h6v6H4V4Zm2 2v2h2V6H6Zm8-2h6v6h-6V4Zm2 2v2h2V6h-2ZM4 14h6v6H4v-6Zm2 2v2h2v-2H6Zm10-2h2v2h-2v-2Zm-2 2h2v2h-2v-2Zm4 0h2v4h-4v-2h2v-2Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="spec" aria-label="Subgrades preview">
+                  <div class="row"><span>Centering</span><b>10</b></div>
+                  <div class="row"><span>Corners</span><b>10</b></div>
+                  <div class="row"><span>Edges</span><b>10</b></div>
+                  <div class="row"><span>Surface</span><b>10</b></div>
+                </div>
+
+                <div class="serial" aria-label="Serial preview">
+                  <span>Serial</span>
+                  <span><strong style="color:var(--fg); font-weight:820;">GRD-3942501837</strong></span>
+                </div>
+
+                <p class="fineprint" style="margin-top:14px">
+                  This is a visual preview only. Final label details may evolve.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="footer">
+      <div>
+        <span>© <span id="year"></span> grd.</span>
+        <span class="sep"> • </span>
+        <span>London time</span>
+        <span class="sep"> • </span>
+        <span id="time"></span>
+      </div>
+
+      <nav class="links" aria-label="Footer links">
+        <a href="#" aria-label="Instagram (placeholder)">Instagram</a>
+        <a href="#" aria-label="X (placeholder)">X</a>
+        <a href="#" aria-label="TikTok (placeholder)">TikTok</a>
+        <a href="mailto:hello@grd.cards" aria-label="Email">Contact</a>
+      </nav>
+    </div>
+  </div>
+
+  <script>
+    // Footer time
+    const yearEl = document.getElementById('year');
+    const timeEl = document.getElementById('time');
+    yearEl.textContent = new Date().getFullYear();
+
+    function updateTime() {
+      const now = new Date();
+      const london = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/London',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(now);
+      timeEl.textContent = london;
+    }
+    updateTime();
+    setInterval(updateTime, 10000);
+
+    // Ultra-minimal captcha reveal
+    const email = document.getElementById('email');
+    const captchaWrap = document.getElementById('captchaWrap');
+    const form = document.getElementById('notifyForm');
+
+    function revealCaptcha(){
+      if (!captchaWrap.classList.contains('show')) {
+        captchaWrap.classList.add('show');
+      }
+    }
+    email.addEventListener('focus', revealCaptcha, { once:true });
+    email.addEventListener('input', (e) => {
+      if (e.target.value && e.target.value.length >= 2) revealCaptcha();
+    });
+    form.addEventListener('submit', () => revealCaptcha());
+
+    // Apple-ish parallax + slab tilt (mouse / touch)
+    const root = document.getElementById('root');
+    const slab = document.getElementById('slab');
+    const slabPanel = document.getElementById('slabPanel');
+
+    function setVars(x, y){
+      const w = window.innerWidth, h = window.innerHeight;
+      const mx = Math.max(0, Math.min(100, (x / w) * 100));
+      const my = Math.max(0, Math.min(100, (y / h) * 100));
+      document.documentElement.style.setProperty('--mx', mx + '%');
+      document.documentElement.style.setProperty('--my', my + '%');
+    }
+
+    function tiltFromEvent(clientX, clientY){
+      const rect = slabPanel.getBoundingClientRect();
+      const cx = clientX - (rect.left + rect.width / 2);
+      const cy = clientY - (rect.top + rect.height / 2);
+      const maxTilt = 8; // degrees
+      const tiltY = (cx / (rect.width / 2)) * maxTilt;
+      const tiltX = (-cy / (rect.height / 2)) * maxTilt;
+
+      document.documentElement.style.setProperty('--tiltX', tiltX.toFixed(2) + 'deg');
+      document.documentElement.style.setProperty('--tiltY', tiltY.toFixed(2) + 'deg');
+      slab.classList.remove('floating');
+    }
+
+    function resetTilt(){
+      document.documentElement.style.setProperty('--tiltX', '0deg');
+      document.documentElement.style.setProperty('--tiltY', '0deg');
+      slab.classList.add('floating');
+    }
+
+    window.addEventListener('pointermove', (e) => {
+      setVars(e.clientX, e.clientY);
+      // Only tilt when near/over slab panel
+      const r = slabPanel.getBoundingClientRect();
+      const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if (inside) tiltFromEvent(e.clientX, e.clientY);
+    }, {passive:true});
+
+    slabPanel.addEventListener('pointerleave', resetTilt);
+
+    // Touch support (light)
+    slabPanel.addEventListener('touchmove', (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      const t = e.touches[0];
+      setVars(t.clientX, t.clientY);
+      tiltFromEvent(t.clientX, t.clientY);
+    }, {passive:true});
+    slabPanel.addEventListener('touchend', resetTilt, {passive:true});
+  </script>
+</body>
+</html>

@@ -1,0 +1,525 @@
+<!-- thank-you.html — matches the 10/10 Apple-style glass landing page -->
+<!doctype html>
+<html lang="en">
+<head>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>grd. — You’re in</title>
+  <meta name="description" content="Thanks for joining the grd. early access list." />
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --fg:#0b0f14;
+      --muted:#5f6b7a;
+      --line:rgba(11,15,20,.12);
+      --line2:rgba(11,15,20,.08);
+
+      --shadow: 0 22px 70px rgba(11,15,20,.12);
+      --shadow2: 0 14px 40px rgba(11,15,20,.10);
+
+      --radius: 24px;
+      --radius2: 18px;
+
+      --glass: rgba(255,255,255,.55);
+      --glassStrong: rgba(255,255,255,.72);
+
+      --focus: 0 0 0 4px rgba(11,15,20,.10);
+
+      /* Parallax vars */
+      --mx: 50%;
+      --my: 35%;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--fg);
+      overflow-x:hidden;
+
+      background:
+        radial-gradient(900px 500px at 20% 10%, rgba(11,15,20,.08), transparent 55%),
+        radial-gradient(900px 600px at 80% 20%, rgba(11,15,20,.06), transparent 60%),
+        radial-gradient(800px 800px at 70% 85%, rgba(11,15,20,.05), transparent 55%),
+        radial-gradient(600px 420px at var(--mx) var(--my), rgba(11,15,20,.06), transparent 55%),
+        var(--bg);
+    }
+
+    a{color:inherit; text-decoration:none}
+    .wrap{min-height:100vh; display:flex; flex-direction:column;}
+
+    header{
+      padding:26px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      max-width:1120px;
+      width:100%;
+      margin:0 auto;
+    }
+
+    .brand{display:flex; align-items:center; gap:12px;}
+    .logo{
+      font-weight:850;
+      letter-spacing:-0.06em;
+      font-size:28px;
+      line-height:1;
+      user-select:none;
+    }
+
+    .pill{
+      border:1px solid var(--line);
+      padding:10px 12px;
+      border-radius:999px;
+      font-size:13px;
+      color:var(--muted);
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    main{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:26px 24px 42px;
+    }
+
+    .card{
+      width:min(1120px, 100%);
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:22px;
+      align-items:stretch;
+    }
+    @media (max-width: 900px){
+      .card{grid-template-columns:1fr; gap:16px}
+    }
+
+    /* Apple Glass Cards */
+    .panel{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius: var(--radius);
+      background: var(--glass);
+      backdrop-filter: blur(22px) saturate(1.25);
+      -webkit-backdrop-filter: blur(22px) saturate(1.25);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+
+      transform: translateY(10px);
+      opacity:0;
+      animation: inUp .75s cubic-bezier(.2,.8,.2,1) forwards;
+      will-change: transform, opacity;
+    }
+    .panel:nth-child(2){animation-delay:.08s}
+
+    @keyframes inUp{
+      to{transform: translateY(0); opacity:1;}
+    }
+
+    .panel::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(700px 320px at 15% 10%, rgba(255,255,255,.58), transparent 62%),
+        radial-gradient(520px 260px at 85% 18%, rgba(255,255,255,.34), transparent 62%),
+        linear-gradient(180deg, rgba(255,255,255,.24), transparent 35%, rgba(255,255,255,.10));
+      pointer-events:none;
+      opacity:.75;
+      mix-blend-mode: screen;
+    }
+    .panel::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    .panel-inner{padding:28px; position:relative;}
+
+    .kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font-size:13px;
+      color:var(--muted);
+      border:1px solid var(--line);
+      padding:10px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      margin-bottom:18px;
+    }
+
+    .dot{
+      width:10px;height:10px;border-radius:999px;background:var(--fg);
+      box-shadow: 0 0 0 4px rgba(11,15,20,.08);
+    }
+
+    h1{
+      margin:0 0 12px 0;
+      font-size: clamp(34px, 4vw, 58px);
+      line-height:1.02;
+      letter-spacing:-0.065em;
+    }
+    .sub{
+      margin:0 0 18px 0;
+      font-size: 16px;
+      color:var(--muted);
+      line-height:1.68;
+      max-width: 62ch;
+    }
+
+    /* Action buttons */
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top: 8px;
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:14px 16px;
+      border-radius:14px;
+      border:1px solid rgba(11,15,20,.16);
+      background: var(--fg);
+      color: #fff;
+      font-weight:780;
+      letter-spacing:-0.01em;
+      font-size:14px;
+      cursor:pointer;
+      transition: transform .12s ease, opacity .18s ease, box-shadow .18s ease;
+      box-shadow: 0 14px 30px rgba(11,15,20,.16);
+      will-change: transform;
+    }
+    .btn:hover{opacity:.95; transform: translateY(-1px);}
+    .btn:active{transform: translateY(0); box-shadow: 0 10px 22px rgba(11,15,20,.14);}
+    .btn.secondary{
+      background: rgba(255,255,255,.72);
+      color: var(--fg);
+      border:1px solid rgba(11,15,20,.10);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      box-shadow: none;
+    }
+
+    /* Feature cards */
+    .features{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+      margin-top: 18px;
+    }
+    @media (max-width: 900px){
+      .features{grid-template-columns:1fr;}
+    }
+    .feat{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:18px;
+      padding:14px 14px;
+      background: rgba(255,255,255,.56);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .feat:hover{transform: translateY(-2px); border-color: rgba(11,15,20,.16);}
+    .feat strong{
+      display:block;
+      font-size:13px;
+      letter-spacing:-0.01em;
+      margin-bottom:4px;
+    }
+    .feat span{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.4;
+    }
+
+    /* Right panel: subtle "certificate" preview */
+    .cert{
+      border-radius: 28px;
+      border:1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(22px) saturate(1.2);
+      -webkit-backdrop-filter: blur(22px) saturate(1.2);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+      position:relative;
+    }
+    .cert::before{
+      content:"";
+      position:absolute;
+      inset:-55%;
+      background: linear-gradient(120deg, transparent 38%, rgba(255,255,255,.55) 50%, transparent 62%);
+      transform: translateX(-30%) rotate(18deg);
+      animation: sheen 4.5s ease-in-out infinite;
+      pointer-events:none;
+      opacity:.75;
+      mix-blend-mode: screen;
+    }
+    @keyframes sheen{
+      0%{transform: translateX(-45%) rotate(18deg);}
+      50%{transform: translateX(10%) rotate(18deg);}
+      100%{transform: translateX(55%) rotate(18deg);}
+    }
+    .cert::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
+      pointer-events:none;
+    }
+    .cert-inner{padding:24px; position:relative;}
+    .meta{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+      margin-bottom: 14px;
+    }
+    .label{font-size:12px; color:var(--muted); margin:0 0 6px;}
+    .stamp{
+      font-weight:930;
+      letter-spacing:-0.06em;
+      font-size: 42px;
+      line-height:1;
+      margin:0;
+    }
+    .stamp small{
+      font-size:14px;
+      letter-spacing:-0.01em;
+      color:var(--muted);
+      font-weight:700;
+      margin-left:10px;
+    }
+    .qr{
+      width:68px;height:68px;
+      border-radius:16px;
+      border:1px solid rgba(11,15,20,.10);
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .qr svg{width:48px;height:48px;opacity:.85}
+    .rows{
+      border-top:1px solid var(--line2);
+      margin-top: 14px;
+      padding-top: 14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px 16px;
+    }
+    .row{
+      display:flex; justify-content:space-between; gap:12px;
+      padding:10px 12px;
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:14px;
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      font-size:13px;
+      color:var(--muted);
+    }
+    .row b{color:var(--fg); font-weight:820}
+    .serial{
+      margin-top: 14px;
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      border-top:1px solid var(--line2);
+      padding-top:14px;
+    }
+
+    .footer{
+      max-width:1120px;
+      margin:0 auto;
+      width:100%;
+      padding: 0 24px 26px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      color:var(--muted);
+      font-size:12px;
+      flex-wrap:wrap;
+    }
+    .links{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .links a{
+      padding:8px 10px;
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      background:rgba(255,255,255,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: transform .18s ease, opacity .18s ease;
+    }
+    .links a:hover{transform: translateY(-1px); opacity:.95;}
+    .sep{opacity:.4}
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{animation:none !important; transition:none !important;}
+      .panel{opacity:1; transform:none;}
+      body{background: var(--bg);}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap" id="root">
+    <header>
+      <div class="brand" aria-label="grd brand">
+        <div class="logo">grd.</div>
+      </div>
+      <div class="pill">Confirmed</div>
+    </header>
+
+    <main>
+      <section class="card" aria-label="Thank you">
+        <!-- Left: message -->
+        <div class="panel">
+          <div class="panel-inner">
+            <div class="kicker"><span class="dot" aria-hidden="true"></span> Waitlist signup successful</div>
+            <h1>You’re in.</h1>
+            <p class="sub">
+              Thanks for joining the <strong>grd.</strong> early access list.
+              We’ll email you when we launch—plus occasional product drops and grading updates.
+            </p>
+
+            <div class="actions">
+              <a class="btn" href="/">Back to home</a>
+              <!-- Replace with your real URL -->
+              <a class="btn secondary" href="#" aria-label="Follow for updates (placeholder)">Follow for updates</a>
+            </div>
+
+            <div class="features" aria-label="What happens next">
+              <div class="feat">
+                <strong>Launch alert</strong>
+                <span>You’ll be first to know when submissions open.</span>
+              </div>
+              <div class="feat">
+                <strong>Early access</strong>
+                <span>Priority access for the first grading slots.</span>
+              </div>
+              <div class="feat">
+                <strong>Collector-first</strong>
+                <span>Transparent reports, modern slabs, instant verification.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: certificate-style preview -->
+        <div class="panel">
+          <div class="panel-inner">
+            <div class="cert" aria-label="Confirmation preview">
+              <div class="cert-inner">
+                <div class="meta">
+                  <div>
+                    <p class="label">Confirmation</p>
+                    <p class="stamp">GRD ✓ <small>Added</small></p>
+                  </div>
+                  <div class="qr" aria-label="QR placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M4 4h6v6H4V4Zm2 2v2h2V6H6Zm8-2h6v6h-6V4Zm2 2v2h2V6h-2ZM4 14h6v6H4v-6Zm2 2v2h2v-2H6Zm10-2h2v2h-2v-2Zm-2 2h2v2h-2v-2Zm4 0h2v4h-4v-2h2v-2Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="rows" aria-label="Next steps">
+                  <div class="row"><span>Status</span><b>Confirmed</b></div>
+                  <div class="row"><span>Access</span><b>Early</b></div>
+                  <div class="row"><span>Updates</span><b>Email</b></div>
+                  <div class="row"><span>Spam</span><b>No</b></div>
+                </div>
+
+                <div class="serial" aria-label="Reference">
+                  <span>Reference</span>
+                  <span><strong style="color:var(--fg); font-weight:820;">GRD-WAITLIST</strong></span>
+                </div>
+
+                <p style="margin:14px 0 0; font-size:12px; color:var(--muted); line-height:1.5;">
+                  Keep an eye on your inbox for launch details.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <div class="footer">
+      <div>
+        <span>© <span id="year"></span> grd.</span>
+        <span class="sep"> • </span>
+        <span>London time</span>
+        <span class="sep"> • </span>
+        <span id="time"></span>
+      </div>
+
+      <nav class="links" aria-label="Footer links">
+        <a href="#" aria-label="Instagram (placeholder)">Instagram</a>
+        <a href="#" aria-label="X (placeholder)">X</a>
+        <a href="#" aria-label="TikTok (placeholder)">TikTok</a>
+        <a href="mailto:hello@grd.cards" aria-label="Email">Contact</a>
+      </nav>
+    </div>
+  </div>
+
+  <script>
+    // Footer time + subtle ambient pointer light (same as landing)
+    const yearEl = document.getElementById('year');
+    const timeEl = document.getElementById('time');
+    yearEl.textContent = new Date().getFullYear();
+
+    function updateTime() {
+      const now = new Date();
+      const london = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/London',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(now);
+      timeEl.textContent = london;
+    }
+    updateTime();
+    setInterval(updateTime, 10000);
+
+    function setVars(x, y){
+      const w = window.innerWidth, h = window.innerHeight;
+      const mx = Math.max(0, Math.min(100, (x / w) * 100));
+      const my = Math.max(0, Math.min(100, (y / h) * 100));
+      document.documentElement.style.setProperty('--mx', mx + '%');
+      document.documentElement.style.setProperty('--my', my + '%');
+    }
+    window.addEventListener('pointermove', (e) => setVars(e.clientX, e.clientY), {passive:true});
+  </script>
+</body>
+</html>
