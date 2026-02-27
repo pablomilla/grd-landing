@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#ffffff" />
-  <title>grd. — AI Grade</title>
-  <meta name="description" content="Upload front + back images for an instant AI grading estimate." />
+  <title>grd. — Pre-Screen (AI)</title>
+  <meta name="description" content="Pre-screen front + back photos to decide if a card is worth submitting to grd." />
 
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -23,10 +23,11 @@
       --shadow2: 0 14px 40px rgba(11,15,20,.10);
       --radius: 24px;
       --glass: rgba(255,255,255,.58);
-      --glass2: rgba(255,255,255,.70);
-      --focus: 0 0 0 4px rgba(11,15,20,.10);
       --mx: 50%;
       --my: 35%;
+      --good: rgba(10, 160, 90, .12);
+      --warn: rgba(255, 140, 0, .14);
+      --bad:  rgba(210, 40, 60, .12);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -45,7 +46,6 @@
     a{color:inherit; text-decoration:none}
     .wrap{min-height:100vh; display:flex; flex-direction:column;}
 
-    /* Top */
     header{
       padding:26px 24px;
       display:flex;
@@ -84,13 +84,12 @@
     .grid{
       width:min(1120px, 100%);
       display:grid;
-      grid-template-columns: 1.05fr .95fr;
+      grid-template-columns: 1.1fr .9fr;
       gap:18px;
       align-items:start;
     }
     @media (max-width: 980px){ .grid{grid-template-columns:1fr; } }
 
-    /* Glass panels + micro animations */
     .panel{
       border:1px solid rgba(11,15,20,.10);
       border-radius: var(--radius);
@@ -107,7 +106,6 @@
     }
     .panel:nth-child(2){animation-delay:.06s}
     @keyframes inUp{ to{transform: translateY(0); opacity:1;} }
-
     .panel::before{
       content:"";
       position:absolute;
@@ -144,10 +142,9 @@
       color:var(--muted);
       line-height:1.6;
       font-size:14px;
-      max-width: 64ch;
+      max-width: 70ch;
     }
 
-    /* Upload block */
     .upload{
       border:1px dashed rgba(11,15,20,.18);
       border-radius: 20px;
@@ -165,6 +162,7 @@
       transform: translateY(-1px);
       background: rgba(255,255,255,.78);
     }
+
     .row{
       display:flex;
       align-items:flex-start;
@@ -179,7 +177,6 @@
     }
     .hint b{color:var(--fg)}
 
-    /* Buttons */
     .btn{
       display:inline-flex;
       align-items:center;
@@ -197,6 +194,7 @@
       transition: transform .12s ease, opacity .18s ease, box-shadow .18s ease;
       box-shadow: 0 14px 30px rgba(11,15,20,.16);
       user-select:none;
+      white-space:nowrap;
     }
     .btn:hover{opacity:.95; transform: translateY(-1px);}
     .btn:active{transform: translateY(0); box-shadow: 0 10px 22px rgba(11,15,20,.14);}
@@ -223,7 +221,43 @@
       box-shadow:none !important;
     }
 
-    /* Two-step "Front / Back" controls */
+    input[type="file"]{display:none;}
+
+    .stepper{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin: 6px 0 2px;
+    }
+    .step{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      padding:9px 10px;
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size:12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .step b{color:var(--fg); font-weight:800}
+    .step .dot{
+      width:8px;height:8px;border-radius:999px;background: rgba(11,15,20,.22);
+      box-shadow: 0 0 0 4px rgba(11,15,20,.06);
+    }
+    .step.active .dot{background: rgba(11,15,20,.90)}
+    .step.done{background: rgba(255,255,255,.68)}
+    .step.done .dot{background: rgba(10,160,90,.9); box-shadow: 0 0 0 4px rgba(10,160,90,.16);}
+
+    .sideRow{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 820px){ .sideRow{grid-template-columns:1fr;} }
+
     .side{
       border:1px solid rgba(11,15,20,.10);
       border-radius:18px;
@@ -233,8 +267,7 @@
       padding:12px;
       display:grid;
       gap:10px;
-      min-width: 320px;
-      flex: 1 1 340px;
+      min-width: 0;
     }
     .sideTop{
       display:flex;
@@ -243,27 +276,17 @@
       gap:10px;
       flex-wrap:wrap;
     }
-    .sideTitle{
-      font-weight:820;
-      letter-spacing:-0.02em;
-      font-size:13px;
-    }
+    .sideTitle{font-weight:820; letter-spacing:-0.02em; font-size:13px;}
     .sideMeta{
       font-size:12px;
       color:var(--muted);
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width: 220px;
+      max-width: 260px;
     }
-    .sideBtns{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    input[type="file"]{display:none;}
+    .sideBtns{display:flex; gap:10px; flex-wrap:wrap;}
 
-    /* Previews */
     .previewWrap{
       margin-top:14px;
       display:grid;
@@ -306,6 +329,13 @@
       object-fit: cover;
       background: rgba(11,15,20,.04);
     }
+    .img.is-placeholder{
+      object-fit: contain;
+      padding: 22px 18px;
+      background:
+        radial-gradient(520px 220px at 30% 20%, rgba(255,255,255,.85), rgba(255,255,255,.45) 55%, rgba(255,255,255,.35)),
+        rgba(11,15,20,.03);
+    }
     .cap{
       display:flex;
       justify-content:space-between;
@@ -319,10 +349,32 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       position:relative;
+      flex-wrap:wrap;
     }
     .cap b{color:var(--fg); font-weight:760}
-    .cap .mini{opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 240px;}
-    .cap .actions{display:flex; gap:8px; flex-wrap:wrap;}
+    .cap .left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex: 1 1 240px;
+      min-width: 200px;
+    }
+    .cap .mini{
+      opacity:.9;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 100%;
+      flex: 1 1 220px;
+      min-width: 160px;
+    }
+    .cap .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      flex: 0 0 auto;
+    }
 
     .status{
       display:flex;
@@ -337,62 +389,145 @@
       box-shadow: 0 0 0 4px rgba(11,15,20,.08);
     }
 
-    /* Results */
-    .resultTop{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
-      margin-bottom:12px;
+    /* Right column modules */
+    .module{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius: 18px;
+      background: rgba(255,255,255,.50);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+      margin-bottom: 12px;
     }
-    .label{font-size:12px; color:var(--muted); margin:0 0 6px;}
-    .grade{
-      font-weight:930;
+    .moduleTitle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+    }
+    .moduleTitle b{letter-spacing:-0.02em}
+    .small{font-size:12px; color:var(--muted); line-height:1.45}
+
+    .topStat{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .bigGrade{
+      font-weight:950;
       letter-spacing:-0.06em;
-      font-size: 46px;
+      font-size: 44px;
       line-height:1;
       margin:0;
     }
-    .grade small{
+    .bigGrade small{
       font-size:14px;
       letter-spacing:-0.01em;
       color:var(--muted);
       font-weight:700;
       margin-left:10px;
     }
-    .rows{
-      border-top:1px solid var(--line2);
-      padding-top:14px;
+    .pill2{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      padding:8px 10px;
+      background: rgba(255,255,255,.60);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .bar{
+      height: 8px;
+      border-radius:999px;
+      border:1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.55);
+      overflow:hidden;
+      margin-top: 10px;
+    }
+    .bar > div{
+      height:100%;
+      width: 0%;
+      border-radius:999px;
+      background: rgba(11,15,20,.80);
+      transition: width .25s ease;
+    }
+
+    .grid2{
       display:grid;
       grid-template-columns: 1fr 1fr;
-      gap:10px 16px;
+      gap:10px 12px;
+      margin-top: 10px;
     }
-    .r{
+    .cell{
       display:flex;
       justify-content:space-between;
-      gap:12px;
+      gap:10px;
       padding:10px 12px;
       border:1px solid rgba(11,15,20,.10);
       border-radius:14px;
       background: rgba(255,255,255,.58);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
       font-size:13px;
       color:var(--muted);
     }
-    .r b{color:var(--fg); font-weight:820}
-    .notes{
-      margin-top:14px;
-      border-top:1px solid var(--line2);
-      padding-top:14px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.6;
-    }
-    .notes ul{margin:8px 0 0 18px; padding:0;}
-    .notes li{margin:6px 0;}
+    .cell b{color:var(--fg); font-weight:820}
 
-    /* Footer */
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border-radius:999px;
+      padding:9px 10px;
+      border:1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.60);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .badge.good{background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(10,160,90,.10));}
+    .badge.warn{background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,140,0,.12));}
+    .badge.bad {background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(210,40,60,.10));}
+    .badge strong{color:var(--fg); font-weight:900}
+
+    .fieldRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      margin-top: 8px;
+    }
+    .input{
+      border:1px solid rgba(11,15,20,.12);
+      border-radius: 14px;
+      padding: 12px 12px;
+      font-size: 13px;
+      background: rgba(255,255,255,.70);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      outline:none;
+      min-width: 160px;
+    }
+    .input:focus{box-shadow: 0 0 0 4px rgba(11,15,20,.10); border-color: rgba(11,15,20,.22);}
+    select.input{cursor:pointer}
+
+    .list{
+      margin: 8px 0 0 18px;
+      padding:0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .list li{margin: 6px 0;}
+
     .footer{
       max-width:1120px;
       margin:0 auto;
@@ -419,7 +554,6 @@
     .links a:hover{transform: translateY(-1px); opacity:.95;}
     .sep{opacity:.4}
 
-    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -443,6 +577,7 @@
       align-items:center;
       justify-content:center;
       text-align:center;
+      z-index:9999;
     }
     .toast.show{opacity:1; transform: translateX(-50%) translateY(0);}
     .toast .tDot{
@@ -460,37 +595,42 @@
 </head>
 
 <body>
-  <div class="wrap" id="root">
+  <div class="wrap">
     <header>
       <div class="logo">grd.</div>
-      <div class="pill">AI grade (front + back)</div>
+      <div class="pill">Pre-screen (front + back)</div>
     </header>
 
     <main>
-      <section class="grid" aria-label="AI grading">
+      <section class="grid" aria-label="AI pre-screening">
         <!-- Left -->
         <div class="panel">
           <div class="inner">
-            <h1>Upload or take photos.</h1>
+            <h1>Decide if it’s worth submitting.</h1>
             <p class="sub">
-              Two-step buttons for each side: <b>Take photo</b> (camera) or <b>Choose file</b> (library/files).
-              Best results: bright light, minimal glare, card fills frame.
+              Upload <b>front + back</b> photos. We identify the card, estimate a grade range, and compute a submission ROI
+              using UK/EU-leaning price sources (GBP default). No “official grades” — just a serious pre-screen.
             </p>
+
+            <div class="stepper" aria-label="Steps">
+              <div class="step active" id="step1"><span class="dot"></span><b>1</b> Front</div>
+              <div class="step" id="step2"><span class="dot"></span><b>2</b> Back</div>
+              <div class="step" id="step3"><span class="dot"></span><b>3</b> Results</div>
+            </div>
 
             <div class="upload" id="drop">
               <div class="row">
                 <div style="max-width:58ch">
-                  <div style="font-weight:780; letter-spacing:-0.02em;">Front + back images</div>
-                  <div class="hint">You can drop 2 images at once, or add each side manually.</div>
+                  <div style="font-weight:820; letter-spacing:-0.02em;">Add both sides</div>
+                  <div class="hint">Tip: bright light, minimal glare, card fills frame.</div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                  <button class="btn secondary" id="demoBtn" type="button">Use demo images</button>
-                  <button class="btn secondary" id="clearBtn" type="button">Clear all</button>
+                  <button class="btn secondary" id="demoBtn" type="button">Use demo</button>
+                  <button class="btn secondary" id="clearAllBtn" type="button">Clear all</button>
                 </div>
               </div>
 
-              <!-- Two-step controls -->
-              <div class="row" style="gap:12px;">
+              <div class="sideRow">
                 <div class="side" aria-label="Front controls">
                   <div class="sideTop">
                     <div class="sideTitle">Front</div>
@@ -514,10 +654,9 @@
                 </div>
               </div>
 
-              <!-- MODE: one or the other (radio) -->
-              <div class="row" style="margin-top:4px;">
+              <div class="row" style="margin-top:2px;">
                 <div class="hint">
-                  <b>Fast</b> compresses images before upload. <b>Strict</b> grades a little harsher with higher detail uploads.
+                  <b>Fast</b> compresses uploads. <b>Strict</b> is harsher with higher detail.
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                   <label class="btn secondary" style="gap:8px;">
@@ -531,25 +670,18 @@
                 </div>
               </div>
 
-              <!-- Hidden inputs (camera vs file) -->
-              <!-- Camera inputs prefer rear camera on mobile -->
+              <!-- Hidden inputs -->
               <input id="frontCamInput" type="file" accept="image/*" capture="environment" />
               <input id="backCamInput" type="file" accept="image/*" capture="environment" />
-
-              <!-- File inputs allow camera OR library chooser depending on OS -->
               <input id="frontFileInput" type="file" accept="image/*" />
               <input id="backFileInput" type="file" accept="image/*" />
-
-              <div class="hint">
-                Tip: if you see glare, move the light source or tilt the card slightly (not the camera).
-              </div>
             </div>
 
             <div class="previewWrap" aria-label="Previews">
               <div class="preview" aria-label="Front preview">
-                <img class="img" id="frontImg" alt="Front card preview" />
+                <img class="img is-placeholder" id="frontImg" alt="Front preview" />
                 <div class="cap">
-                  <div><b>Front</b> <span class="mini" id="frontMeta">—</span></div>
+                  <div class="left"><b>Front</b> <span class="mini" id="frontMeta">—</span></div>
                   <div class="actions">
                     <button class="btn soft" id="retakeFront" type="button" style="padding:10px 12px; border-radius:12px;">Retake</button>
                     <button class="btn secondary" id="clearFront" type="button" style="padding:10px 12px; border-radius:12px;">Clear</button>
@@ -558,9 +690,9 @@
               </div>
 
               <div class="preview" aria-label="Back preview">
-                <img class="img" id="backImg" alt="Back card preview" />
+                <img class="img is-placeholder" id="backImg" alt="Back preview" />
                 <div class="cap">
-                  <div><b>Back</b> <span class="mini" id="backMeta">—</span></div>
+                  <div class="left"><b>Back</b> <span class="mini" id="backMeta">—</span></div>
                   <div class="actions">
                     <button class="btn soft" id="retakeBack" type="button" style="padding:10px 12px; border-radius:12px;">Retake</button>
                     <button class="btn secondary" id="clearBack" type="button" style="padding:10px 12px; border-radius:12px;">Clear</button>
@@ -575,8 +707,8 @@
                 <span>Upload/capture front + back to begin.</span>
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn secondary" id="clearBtn2" type="button">Clear all</button>
-                <button class="btn" id="gradeBtn" type="button" disabled>Run AI Grade</button>
+                <button class="btn secondary" id="identifyBtn" type="button" disabled>Identify card</button>
+                <button class="btn" id="runBtn" type="button" disabled>Run pre-screen</button>
               </div>
             </div>
 
@@ -584,35 +716,132 @@
           </div>
         </div>
 
-        <!-- Right: results -->
+        <!-- Right -->
         <div class="panel">
           <div class="inner">
-            <div class="resultTop">
-              <div>
-                <p class="label">Estimated grade</p>
-                <p class="grade" id="grade">— <small id="label">Upload both</small></p>
+            <!-- Identification -->
+            <div class="module" id="identModule">
+              <div class="moduleTitle">
+                <b>Identification</b>
+                <span class="pill2" id="identPill">Waiting…</span>
               </div>
-              <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-                <button class="btn secondary" id="downloadBtn" type="button" disabled>Download report</button>
+              <div class="small" id="identText">Upload both sides, then identify the card.</div>
+
+              <div class="fieldRow" style="margin-top:10px;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <span class="pill2" id="gamePill">Game: —</span>
+                  <span class="pill2" id="cardPill">Card: —</span>
+                </div>
               </div>
+
+              <div class="small" style="margin-top:10px;">
+                If multiple printings match, we’ll show top candidates to pick from.
+              </div>
+
+              <div id="candidateWrap" style="margin-top:10px; display:none;"></div>
             </div>
 
-            <div class="rows" aria-label="Subgrades">
-              <div class="r"><span>Centering</span><b id="cent">—</b></div>
-              <div class="r"><span>Corners</span><b id="corn">—</b></div>
-              <div class="r"><span>Edges</span><b id="edge">—</b></div>
-              <div class="r"><span>Surface</span><b id="surf">—</b></div>
-            </div>
+            <!-- Pre-screen result -->
+            <div class="module" id="resultModule">
+              <div class="moduleTitle">
+                <b>Pre-screen</b>
+                <span class="pill2" id="resultPill">—</span>
+              </div>
 
-            <div class="notes" aria-label="Notes">
-              <div style="font-weight:760; color:var(--fg); letter-spacing:-0.02em;">Notes</div>
-              <ul id="notes">
-                <li>Upload front + back and run AI grade to see results.</li>
+              <div class="topStat">
+                <div>
+                  <div class="small">Most likely grade</div>
+                  <p class="bigGrade" id="gradeBig">— <small id="gradeLabel">Upload both</small></p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                  <span class="badge" id="outlookBadge"><strong>—</strong> Outlook</span>
+                  <span class="pill2" id="rangePill">Range: —</span>
+                </div>
+              </div>
+
+              <div class="bar" aria-label="Confidence">
+                <div id="confBar"></div>
+              </div>
+              <div class="small" style="margin-top:8px;">
+                Confidence is an estimate of how stable the predicted range is (not an “official” guarantee).
+              </div>
+
+              <div class="grid2" style="margin-top:12px;">
+                <div class="cell"><span>Centering</span><b id="cent">—</b></div>
+                <div class="cell"><span>Corners</span><b id="corn">—</b></div>
+                <div class="cell"><span>Edges</span><b id="edge">—</b></div>
+                <div class="cell"><span>Surface</span><b id="surf">—</b></div>
+              </div>
+
+              <ul class="list" id="issues" style="margin-top:12px;">
+                <li>Run pre-screen to see issues and decision guidance.</li>
               </ul>
-              <div class="hint" style="margin-top:10px;">
-                Tip: avoid glare and keep the entire card in frame.
+            </div>
+
+            <!-- ROI -->
+            <div class="module" id="roiModule">
+              <div class="moduleTitle">
+                <b>ROI</b>
+                <span class="pill2" id="roiPill">GBP default</span>
+              </div>
+
+              <div class="fieldRow">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <label class="small">Currency</label>
+                  <select class="input" id="currencySel">
+                    <option value="GBP" selected>GBP (£)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <label class="small">Submission fee</label>
+                  <input class="input" id="feeInput" type="number" min="0" step="0.5" value="15" />
+                </div>
+              </div>
+
+              <div class="fieldRow" style="margin-top:10px;">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <label class="small">Raw value (override)</label>
+                  <input class="input" id="rawOverride" type="number" min="0" step="0.01" placeholder="Auto…" />
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <label class="small">Pricing mode</label>
+                  <select class="input" id="pricingMode">
+                    <option value="live" selected>Live (EU/UK source)</option>
+                    <option value="manual">Manual (no live price)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid2" style="margin-top:12px;">
+                <div class="cell"><span>Raw (est.)</span><b id="rawVal">—</b></div>
+                <div class="cell"><span>EV graded</span><b id="evVal">—</b></div>
+                <div class="cell"><span>Fee</span><b id="feeVal">—</b></div>
+                <div class="cell"><span>ROI</span><b id="roiVal">—</b></div>
+              </div>
+
+              <div class="small" style="margin-top:10px;" id="roiNote">
+                Uses live EU/UK-leaning pricing when available. Otherwise you can enter a raw value manually.
               </div>
             </div>
+
+            <!-- Download -->
+            <div class="module">
+              <div class="moduleTitle">
+                <b>Export</b>
+                <span class="pill2">Report</span>
+              </div>
+              <div class="fieldRow">
+                <button class="btn secondary" id="downloadBtn" type="button" disabled>Download JSON report</button>
+              </div>
+              <div class="small" style="margin-top:10px;">
+                Reports are for pre-screening only. Final physical grade depends on inspection conditions.
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -639,7 +868,7 @@
   </div>
 
   <script>
-    // Ambient pointer light (Apple-y)
+    // Ambient pointer light
     function setVars(x, y){
       const w = window.innerWidth, h = window.innerHeight;
       const mx = Math.max(0, Math.min(100, (x / w) * 100));
@@ -665,65 +894,9 @@
     updateTime();
     setInterval(updateTime, 10000);
 
-    // UI refs
-    const drop = document.getElementById('drop');
-    const statusEl = document.getElementById('status');
-    const gradeBtn = document.getElementById('gradeBtn');
-
-    const frontImg = document.getElementById('frontImg');
-    const backImg = document.getElementById('backImg');
-    const frontMeta = document.getElementById('frontMeta');
-    const backMeta = document.getElementById('backMeta');
-    const frontTiny = document.getElementById('frontTiny');
-    const backTiny = document.getElementById('backTiny');
-
-    const clearFrontBtn = document.getElementById('clearFront');
-    const clearBackBtn = document.getElementById('clearBack');
-    const retakeFrontBtn = document.getElementById('retakeFront');
-    const retakeBackBtn = document.getElementById('retakeBack');
-
-    const demoBtn = document.getElementById('demoBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const clearBtn2 = document.getElementById('clearBtn2');
-    const downloadBtn = document.getElementById('downloadBtn');
-
-    // Two-step buttons
-    const frontCamBtn = document.getElementById('frontCamBtn');
-    const frontFileBtn = document.getElementById('frontFileBtn');
-    const backCamBtn = document.getElementById('backCamBtn');
-    const backFileBtn = document.getElementById('backFileBtn');
-
-    // Two-step inputs
-    const frontCamInput = document.getElementById('frontCamInput');
-    const backCamInput = document.getElementById('backCamInput');
-    const frontFileInput = document.getElementById('frontFileInput');
-    const backFileInput = document.getElementById('backFileInput');
-
-    // Mode radios
-    const modeFast = document.getElementById('modeFast');
-    const modeStrict = document.getElementById('modeStrict');
-
-    // Results refs
-    const gradeEl = document.getElementById('grade');
-    const labelEl = document.getElementById('label');
-    const centEl = document.getElementById('cent');
-    const cornEl = document.getElementById('corn');
-    const edgeEl = document.getElementById('edge');
-    const surfEl = document.getElementById('surf');
-    const notesEl = document.getElementById('notes');
-
+    // Toast
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
-
-    const cv = document.getElementById('cv');
-
-    let frontFileObj = null;
-    let backFileObj = null;
-    let lastReport = null;
-
-    function isFastMode(){ return !!modeFast.checked; }
-    function isStrictMode(){ return !!modeStrict.checked; }
-
     function toastShow(msg){
       toastMsg.textContent = msg;
       toast.classList.add('show');
@@ -731,63 +904,138 @@
       toast._t = setTimeout(()=>toast.classList.remove('show'), 2400);
     }
 
+    // Placeholder silhouette with grd. monogram
+    const silhouetteSvg = (side) => {
+      const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.90"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0.40"/>
+          </linearGradient>
+          <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0b0f14" stop-opacity="0.06"/>
+            <stop offset="1" stop-color="#0b0f14" stop-opacity="0.02"/>
+          </linearGradient>
+          <radialGradient id="shine" cx="30%" cy="20%" r="70%">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0b0f14" flood-opacity="0.14"/>
+          </filter>
+        </defs>
+        <rect x="70" y="70" width="760" height="1060" rx="56" fill="url(#bg)" filter="url(#softShadow)"/>
+        <rect x="98" y="98" width="704" height="1004" rx="46" fill="url(#glass)" stroke="rgba(11,15,20,.10)" stroke-width="3"/>
+        <rect x="170" y="210" width="560" height="780" rx="36"
+          fill="rgba(11,15,20,.04)" stroke="rgba(11,15,20,.18)" stroke-width="4" stroke-dasharray="16 14"/>
+        <ellipse cx="320" cy="260" rx="420" ry="260" fill="url(#shine)"/>
+        <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial"
+          font-size="88" font-weight="900" letter-spacing="-4"
+          fill="rgba(11,15,20,.52)">grd.</text>
+        <text x="50%" y="62%" dominant-baseline="middle" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial"
+          font-size="26" font-weight="700" fill="rgba(11,15,20,.36)">${side.toUpperCase()}</text>
+        <text x="50%" y="69%" dominant-baseline="middle" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial"
+          font-size="20" font-weight="650" fill="rgba(11,15,20,.28)">Take photo or choose file</text>
+      </svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    };
+
+    // DOM refs
+    const drop = document.getElementById('drop');
+
+    const frontImg = document.getElementById('frontImg');
+    const backImg  = document.getElementById('backImg');
+    const frontMeta = document.getElementById('frontMeta');
+    const backMeta  = document.getElementById('backMeta');
+    const frontTiny = document.getElementById('frontTiny');
+    const backTiny  = document.getElementById('backTiny');
+
+    const frontCamBtn = document.getElementById('frontCamBtn');
+    const frontFileBtn = document.getElementById('frontFileBtn');
+    const backCamBtn = document.getElementById('backCamBtn');
+    const backFileBtn = document.getElementById('backFileBtn');
+    const frontCamInput = document.getElementById('frontCamInput');
+    const backCamInput  = document.getElementById('backCamInput');
+    const frontFileInput = document.getElementById('frontFileInput');
+    const backFileInput  = document.getElementById('backFileInput');
+
+    const retakeFront = document.getElementById('retakeFront');
+    const retakeBack  = document.getElementById('retakeBack');
+    const clearFront  = document.getElementById('clearFront');
+    const clearBack   = document.getElementById('clearBack');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+
+    const modeFast = document.getElementById('modeFast');
+    const modeStrict = document.getElementById('modeStrict');
+
+    const statusEl = document.getElementById('status');
+    const identifyBtn = document.getElementById('identifyBtn');
+    const runBtn = document.getElementById('runBtn');
+
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+
+    // Right-side modules
+    const identPill = document.getElementById('identPill');
+    const identText = document.getElementById('identText');
+    const gamePill  = document.getElementById('gamePill');
+    const cardPill  = document.getElementById('cardPill');
+    const candidateWrap = document.getElementById('candidateWrap');
+
+    const resultPill = document.getElementById('resultPill');
+    const gradeBig = document.getElementById('gradeBig');
+    const gradeLabel = document.getElementById('gradeLabel');
+    const rangePill = document.getElementById('rangePill');
+    const confBar = document.getElementById('confBar');
+
+    const centEl = document.getElementById('cent');
+    const cornEl = document.getElementById('corn');
+    const edgeEl = document.getElementById('edge');
+    const surfEl = document.getElementById('surf');
+    const issuesEl = document.getElementById('issues');
+
+    const outlookBadge = document.getElementById('outlookBadge');
+
+    const currencySel = document.getElementById('currencySel');
+    const feeInput = document.getElementById('feeInput');
+    const rawOverride = document.getElementById('rawOverride');
+    const pricingMode = document.getElementById('pricingMode');
+
+    const rawVal = document.getElementById('rawVal');
+    const evVal  = document.getElementById('evVal');
+    const feeVal = document.getElementById('feeVal');
+    const roiVal = document.getElementById('roiVal');
+    const roiPill = document.getElementById('roiPill');
+    const roiNote = document.getElementById('roiNote');
+
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    const demoBtn = document.getElementById('demoBtn');
+
+    // Canvas for compression
+    const cv = document.getElementById('cv');
+
+    // Set placeholders
+    frontImg.src = silhouetteSvg("Front");
+    backImg.src  = silhouetteSvg("Back");
+
+    let frontFile = null;
+    let backFile  = null;
+
+    // identification + pricing state
+    let ident = null;          // chosen canonical card
+    let identCandidates = [];  // possible matches
+    let price = null;          // live price object
+    let gradeReport = null;    // pre-screen report (grade distribution etc.)
+    let fullReport = null;     // combined exported report
+
     function setStatus(text){
       statusEl.innerHTML = `<span class="dot"></span><span>${text}</span>`;
-    }
-
-    function canGrade(){
-      return !!(frontFileObj && backFileObj);
-    }
-
-    function updateGradeBtn(){
-      gradeBtn.disabled = !canGrade();
-      if (canGrade()) setStatus("Ready. Click “Run AI Grade”.");
-      else if (frontFileObj || backFileObj) setStatus("Add the missing side to enable grading.");
-      else setStatus("Upload/capture front + back to begin.");
-    }
-
-    function resetResults(){
-      gradeEl.innerHTML = `— <small>Upload both</small>`;
-      labelEl.textContent = "Upload both";
-      centEl.textContent = cornEl.textContent = edgeEl.textContent = surfEl.textContent = '—';
-      notesEl.innerHTML = `<li>Upload front + back and run AI grade to see results.</li>`;
-      downloadBtn.disabled = true;
-      lastReport = null;
-    }
-
-    function setResultsFromAI(data){
-      gradeEl.innerHTML = `${Number(data.overall).toFixed(1)} <small>${data.label || ''}</small>`;
-      labelEl.textContent = data.label || '';
-      centEl.textContent = Number(data.subgrades?.centering ?? 0).toFixed(1);
-      cornEl.textContent = Number(data.subgrades?.corners ?? 0).toFixed(1);
-      edgeEl.textContent = Number(data.subgrades?.edges ?? 0).toFixed(1);
-      surfEl.textContent = Number(data.subgrades?.surface ?? 0).toFixed(1);
-
-      notesEl.innerHTML = '';
-      const notes = Array.isArray(data.notes) ? data.notes : [];
-      const issues = Array.isArray(data.issues) ? data.issues : [];
-
-      if (notes.length === 0 && issues.length === 0){
-        notesEl.innerHTML = `<li>No notes returned.</li>`;
-      } else {
-        notes.forEach(n=>{
-          const li = document.createElement('li');
-          li.textContent = n;
-          notesEl.appendChild(li);
-        });
-        issues.slice(0, 6).forEach(i=>{
-          const li = document.createElement('li');
-          li.textContent = `Issue: ${i}`;
-          notesEl.appendChild(li);
-        });
-      }
-
-      downloadBtn.disabled = false;
-      lastReport = {
-        ...data,
-        inputs: { strict: isStrictMode(), fast: isFastMode() },
-        createdAt: new Date().toISOString()
-      };
     }
 
     function fileLabel(f){
@@ -796,161 +1044,175 @@
       return `${f.name} · ${kb}KB`;
     }
 
-    function setPreviewFromFile(imgEl, fileObj, metaEl, tinyEl){
-      if (!fileObj) return;
+    function canProceed(){
+      return !!(frontFile && backFile);
+    }
+
+    function updateSteps(){
+      // front done
+      if (frontFile) { step1.classList.add('done'); step1.classList.remove('active'); }
+      else { step1.classList.remove('done'); step1.classList.add('active'); }
+
+      // back active if front present
+      if (frontFile && !backFile) { step2.classList.add('active'); }
+      else { step2.classList.remove('active'); }
+
+      if (backFile) step2.classList.add('done');
+      else step2.classList.remove('done');
+
+      // results
+      if (gradeReport) { step3.classList.add('done'); step3.classList.remove('active'); }
+      else if (frontFile && backFile) step3.classList.add('active');
+      else step3.classList.remove('active');
+    }
+
+    function updateButtons(){
+      identifyBtn.disabled = !canProceed();
+      runBtn.disabled = !canProceed();
+      if (canProceed()) setStatus("Ready. Identify card or run pre-screen.");
+      else if (frontFile || backFile) setStatus("Add the missing side.");
+      else setStatus("Upload/capture front + back to begin.");
+    }
+
+    function resetRight(){
+      ident = null;
+      identCandidates = [];
+      price = null;
+      gradeReport = null;
+      fullReport = null;
+
+      identPill.textContent = "Waiting…";
+      identText.textContent = "Upload both sides, then identify the card.";
+      gamePill.textContent = "Game: —";
+      cardPill.textContent = "Card: —";
+      candidateWrap.style.display = "none";
+      candidateWrap.innerHTML = "";
+
+      resultPill.textContent = "—";
+      gradeBig.innerHTML = `— <small>Upload both</small>`;
+      gradeLabel.textContent = "Upload both";
+      rangePill.textContent = "Range: —";
+      confBar.style.width = "0%";
+      outlookBadge.className = "badge";
+      outlookBadge.innerHTML = `<strong>—</strong> Outlook`;
+
+      centEl.textContent = cornEl.textContent = edgeEl.textContent = surfEl.textContent = "—";
+      issuesEl.innerHTML = `<li>Run pre-screen to see issues and decision guidance.</li>`;
+
+      rawVal.textContent = evVal.textContent = feeVal.textContent = roiVal.textContent = "—";
+      downloadBtn.disabled = true;
+
+      updateSteps();
+    }
+
+    function setPreview(imgEl, fileObj, metaEl, tinyEl){
       const url = URL.createObjectURL(fileObj);
+      imgEl.classList.remove("is-placeholder");
       imgEl.src = url;
       imgEl.onload = () => URL.revokeObjectURL(url);
       metaEl.textContent = fileLabel(fileObj);
       tinyEl.textContent = fileLabel(fileObj);
     }
 
-    // --- Image compression (Fast vs Strict) ---
-    async function fileToDataUrlCompressed(file) {
-      const blobUrl = URL.createObjectURL(file);
-      const img = new Image();
-      img.decoding = "async";
-      img.loading = "eager";
-      img.src = blobUrl;
-
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-      URL.revokeObjectURL(blobUrl);
-
-      const fastMode = isFastMode();
-      const max = fastMode ? 1100 : 1600;
-      const q = fastMode ? 0.84 : 0.92;
-
-      const scale = Math.min(1, max / Math.max(img.width, img.height));
-      const w = Math.max(1, Math.round(img.width * scale));
-      const h = Math.max(1, Math.round(img.height * scale));
-
-      cv.width = w;
-      cv.height = h;
-      const ctx = cv.getContext("2d");
-      ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0, w, h);
-
-      return cv.toDataURL("image/jpeg", q);
+    function clearSide(which){
+      if (which === "front"){
+        frontFile = null;
+        frontCamInput.value = "";
+        frontFileInput.value = "";
+        frontImg.classList.add("is-placeholder");
+        frontImg.src = silhouetteSvg("Front");
+        frontMeta.textContent = "—";
+        frontTiny.textContent = "—";
+      } else {
+        backFile = null;
+        backCamInput.value = "";
+        backFileInput.value = "";
+        backImg.classList.add("is-placeholder");
+        backImg.src = silhouetteSvg("Back");
+        backMeta.textContent = "—";
+        backTiny.textContent = "—";
+      }
+      resetRight();
+      updateButtons();
+      updateSteps();
     }
 
-    // --- Setters ---
-    function setFrontFile(f){
-      if (!f || !f.type?.startsWith("image/")){
-        toastShow("Front: please choose an image.");
-        return;
-      }
-      frontFileObj = f;
-      setPreviewFromFile(frontImg, f, frontMeta, frontTiny);
-      resetResults();
-      updateGradeBtn();
+    function clearAll(){
+      clearSide("front");
+      clearSide("back");
+      toastShow("Cleared.");
+    }
+
+    clearFront.addEventListener("click", ()=>clearSide("front"));
+    clearBack.addEventListener("click", ()=>clearSide("back"));
+    clearAllBtn.addEventListener("click", clearAll);
+
+    // Buttons -> inputs
+    frontCamBtn.addEventListener("click", ()=>frontCamInput.click());
+    frontFileBtn.addEventListener("click", ()=>frontFileInput.click());
+    backCamBtn.addEventListener("click", ()=>backCamInput.click());
+    backFileBtn.addEventListener("click", ()=>backFileInput.click());
+
+    retakeFront.addEventListener("click", ()=>frontCamInput.click());
+    retakeBack.addEventListener("click", ()=>backCamInput.click());
+
+    // Inputs
+    function setFront(f){
+      if (!f || !f.type?.startsWith("image/")) return toastShow("Front: choose an image file.");
+      frontFile = f;
+      setPreview(frontImg, f, frontMeta, frontTiny);
+      resetRight();
+      updateButtons();
+      updateSteps();
       toastShow("Front ready.");
     }
-
-    function setBackFile(f){
-      if (!f || !f.type?.startsWith("image/")){
-        toastShow("Back: please choose an image.");
-        return;
-      }
-      backFileObj = f;
-      setPreviewFromFile(backImg, f, backMeta, backTiny);
-      resetResults();
-      updateGradeBtn();
+    function setBack(f){
+      if (!f || !f.type?.startsWith("image/")) return toastShow("Back: choose an image file.");
+      backFile = f;
+      setPreview(backImg, f, backMeta, backTiny);
+      resetRight();
+      updateButtons();
+      updateSteps();
       toastShow("Back ready.");
     }
 
-    function clearFront(){
-      frontFileObj = null;
-      frontCamInput.value = "";
-      frontFileInput.value = "";
-      frontImg.removeAttribute("src");
-      frontMeta.textContent = "—";
-      frontTiny.textContent = "—";
-      resetResults();
-      updateGradeBtn();
-    }
-
-    function clearBack(){
-      backFileObj = null;
-      backCamInput.value = "";
-      backFileInput.value = "";
-      backImg.removeAttribute("src");
-      backMeta.textContent = "—";
-      backTiny.textContent = "—";
-      resetResults();
-      updateGradeBtn();
-    }
-
-    // Two-step button behavior
-    frontCamBtn.addEventListener('click', () => frontCamInput.click());
-    frontFileBtn.addEventListener('click', () => frontFileInput.click());
-    backCamBtn.addEventListener('click', () => backCamInput.click());
-    backFileBtn.addEventListener('click', () => backFileInput.click());
-
-    // Retake uses camera-preferred input
-    retakeFrontBtn.addEventListener('click', () => frontCamInput.click());
-    retakeBackBtn.addEventListener('click', () => backCamInput.click());
-
-    // Inputs
-    frontCamInput.addEventListener("change", (e)=> setFrontFile(e.target.files?.[0]));
-    backCamInput.addEventListener("change", (e)=> setBackFile(e.target.files?.[0]));
-    frontFileInput.addEventListener("change", (e)=> setFrontFile(e.target.files?.[0]));
-    backFileInput.addEventListener("change", (e)=> setBackFile(e.target.files?.[0]));
-
-    // Clear buttons
-    clearFrontBtn.addEventListener("click", clearFront);
-    clearBackBtn.addEventListener("click", clearBack);
-
-    function clearAll(){
-      clearFront();
-      clearBack();
-      toastShow("Cleared.");
-    }
-    clearBtn.addEventListener("click", clearAll);
-    clearBtn2.addEventListener("click", clearAll);
+    frontCamInput.addEventListener("change", e=>setFront(e.target.files?.[0]));
+    frontFileInput.addEventListener("change", e=>setFront(e.target.files?.[0]));
+    backCamInput.addEventListener("change", e=>setBack(e.target.files?.[0]));
+    backFileInput.addEventListener("change", e=>setBack(e.target.files?.[0]));
 
     // Drag & drop
     ['dragenter','dragover'].forEach(evt=>{
-      drop.addEventListener(evt, (e)=>{
-        e.preventDefault(); e.stopPropagation();
-        drop.classList.add('dragover');
-      });
+      drop.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover'); });
     });
     ['dragleave','drop'].forEach(evt=>{
-      drop.addEventListener(evt, (e)=>{
-        e.preventDefault(); e.stopPropagation();
-        drop.classList.remove('dragover');
-      });
+      drop.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover'); });
     });
-    drop.addEventListener('drop', (e)=>{
+    drop.addEventListener("drop", (e)=>{
       const files = Array.from(e.dataTransfer.files || []).filter(f => f.type && f.type.startsWith("image/"));
-      if (!files.length){
-        toastShow("Drop image files only.");
-        return;
-      }
+      if (!files.length) return toastShow("Drop image files only.");
       if (files.length >= 2){
-        setFrontFile(files[0]);
-        setBackFile(files[1]);
+        setFront(files[0]); setBack(files[1]);
         toastShow("Front + back loaded.");
       } else {
-        if (!frontFileObj) setFrontFile(files[0]);
-        else if (!backFileObj) setBackFile(files[0]);
-        else toastShow("Both sides already set. Clear one to replace.");
+        if (!frontFile) setFront(files[0]);
+        else if (!backFile) setBack(files[0]);
+        else toastShow("Both already set. Clear one to replace.");
       }
-      updateGradeBtn();
+      updateButtons(); updateSteps();
     });
 
-    // Mode changes reset results
-    [modeFast, modeStrict].forEach(el => el.addEventListener('change', () => {
-      resetResults();
-      updateGradeBtn();
-      toastShow(isFastMode() ? "Mode: Fast" : "Mode: Strict");
-    }));
+    // Mode change resets
+    [modeFast, modeStrict].forEach(el=>{
+      el.addEventListener("change", ()=>{
+        resetRight();
+        updateButtons();
+        toastShow(modeFast.checked ? "Mode: Fast" : "Mode: Strict");
+      });
+    });
 
-    // Demo images (inline SVG)
-    demoBtn.addEventListener('click', ()=>{
+    // Demo
+    demoBtn.addEventListener("click", ()=>{
       const mk = (title, sub) => `
       <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
         <defs>
@@ -987,74 +1249,349 @@
         dataUrlToFile(frontData, "demo-front.svg"),
         dataUrlToFile(backData, "demo-back.svg"),
       ]).then(([f1, f2])=>{
-        setFrontFile(f1);
-        setBackFile(f2);
+        setFront(f1);
+        setBack(f2);
         toastShow("Demo images loaded.");
-      }).catch(()=>{
-        frontImg.src = frontData;
-        backImg.src = backData;
-        frontMeta.textContent = "demo-front.svg";
-        backMeta.textContent = "demo-back.svg";
-        frontTiny.textContent = "demo-front.svg";
-        backTiny.textContent = "demo-back.svg";
-        toastShow("Demo previews loaded.");
       });
     });
 
-    // --- Real AI call to Vercel function ---
-    gradeBtn.addEventListener('click', async ()=>{
-      if (!canGrade()){
-        toastShow("Upload front + back first.");
+    // Compression helper (keeps uploads stable)
+    async function fileToDataUrlCompressed(file){
+      const blobUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.decoding = "async";
+      img.loading = "eager";
+      img.src = blobUrl;
+      await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; });
+      URL.revokeObjectURL(blobUrl);
+
+      const fast = modeFast.checked;
+      const max = fast ? 1100 : 1700;
+      const q = fast ? 0.84 : 0.92;
+
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext("2d");
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+
+      return cv.toDataURL("image/jpeg", q);
+    }
+
+    // Candidate chooser UI
+    function renderCandidates(cands){
+      candidateWrap.style.display = "block";
+      candidateWrap.innerHTML = "";
+
+      const wrap = document.createElement("div");
+      wrap.style.display = "grid";
+      wrap.style.gap = "10px";
+
+      cands.slice(0,5).forEach((c, idx)=>{
+        const btn = document.createElement("button");
+        btn.className = "btn secondary";
+        btn.type = "button";
+        btn.style.justifyContent = "space-between";
+        btn.style.padding = "12px 12px";
+        btn.innerHTML = `<span style="text-align:left; display:flex; flex-direction:column; gap:2px;">
+            <span style="font-weight:820; color:var(--fg)">${c.displayName || c.name || "Candidate"}</span>
+            <span style="font-size:12px; color:var(--muted)">${c.displaySet || c.set || ""} ${c.collectorNumber ? "· #"+c.collectorNumber : ""} ${c.variant ? "· "+c.variant : ""}</span>
+          </span>
+          <span class="pill2">${Math.round((c.confidence||0)*100)}%</span>`;
+        btn.addEventListener("click", async ()=>{
+          ident = c;
+          identCandidates = cands;
+          identPill.textContent = "Selected";
+          identText.textContent = "Card selected. Fetching live EU/UK price…";
+          gamePill.textContent = `Game: ${c.game || "—"}`;
+          cardPill.textContent = `Card: ${c.displayName || c.name || "—"}`;
+          toastShow("Selected candidate.");
+          await fetchPriceAndUpdate();
+        });
+        wrap.appendChild(btn);
+      });
+
+      candidateWrap.appendChild(wrap);
+    }
+
+    // Pricing + ROI
+    function currencySymbol(code){
+      return code === "GBP" ? "£" : code === "EUR" ? "€" : "$";
+    }
+
+    function formatMoney(v, code){
+      if (typeof v !== "number" || !isFinite(v)) return "—";
+      const sym = currencySymbol(code);
+      return `${sym}${v.toFixed(2)}`;
+    }
+
+    function computeOutlook(roi){
+      // Simple thresholds (tune later)
+      if (roi >= 25) return { key:"good", label:"Worth submitting" };
+      if (roi >= 0)  return { key:"warn", label:"Borderline" };
+      return { key:"bad", label:"Hold" };
+    }
+
+    function applyROI(){
+      const cur = currencySel.value;
+      const fee = Math.max(0, Number(feeInput.value || 15));
+      const feeDisplay = (price?.converted?.[cur]?.fee ?? null);
+
+      // Determine raw value:
+      const rawManual = rawOverride.value !== "" ? Number(rawOverride.value) : null;
+      const raw = rawManual != null && isFinite(rawManual)
+        ? rawManual
+        : (price?.converted?.[cur]?.raw ?? null);
+
+      // Expected graded value:
+      const ev = price?.converted?.[cur]?.evGraded ?? null;
+
+      rawVal.textContent = raw != null ? formatMoney(raw, cur) : "—";
+      evVal.textContent  = ev  != null ? formatMoney(ev, cur)  : "—";
+      feeVal.textContent = formatMoney(fee, cur);
+
+      if (raw == null || ev == null){
+        roiVal.textContent = "—";
+        roiNote.textContent =
+          pricingMode.value === "manual"
+            ? "Manual mode: enter a raw value, then run pre-screen to estimate EV."
+            : "Live pricing not available for this printing yet. You can enter a raw value manually.";
         return;
       }
 
-      setStatus("Preparing images…");
-      gradeBtn.disabled = true;
-      toastShow("Uploading for AI grading…");
+      const roi = ev - raw - fee;
+      roiVal.textContent = formatMoney(roi, cur);
+      const outlook = computeOutlook(roi);
+
+      // reflect on main badge too (pre-screen)
+      outlookBadge.className = `badge ${outlook.key}`;
+      outlookBadge.innerHTML = `<strong>${outlook.key === "good" ? "✓" : outlook.key === "warn" ? "•" : "×"}</strong> ${outlook.label}`;
+    }
+
+    currencySel.addEventListener("change", ()=>{ applyROI(); });
+    feeInput.addEventListener("input", ()=>{ applyROI(); });
+    rawOverride.addEventListener("input", ()=>{ applyROI(); });
+    pricingMode.addEventListener("change", ()=>{
+      // If manual, we skip live fetch unless already fetched
+      if (pricingMode.value === "manual"){
+        toastShow("Manual pricing: enter raw value to compute ROI.");
+        roiPill.textContent = "Manual pricing";
+      } else {
+        roiPill.textContent = "Live pricing";
+        if (ident) fetchPriceAndUpdate();
+      }
+      applyROI();
+    });
+
+    async function fetchPriceAndUpdate(){
+      if (!ident) return;
+      if (pricingMode.value === "manual"){
+        price = null;
+        applyROI();
+        return;
+      }
 
       try{
-        const frontDataUrl = await fileToDataUrlCompressed(frontFileObj);
-        const backDataUrl = await fileToDataUrlCompressed(backFileObj);
+        identPill.textContent = "Pricing…";
+        const cur = currencySel.value;
 
-        setStatus("AI grading…");
+        // Needs gradeReport distribution for EV; if not ready yet, price endpoint can still return raw
+        const dist = gradeReport?.distribution || null;
 
-        const resp = await fetch("/api/grade", {
+        const resp = await fetch("/api/price", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {"Content-Type":"application/json"},
           body: JSON.stringify({
-            frontDataUrl,
-            backDataUrl,
-            strict: isStrictMode()
+            card: ident,
+            currency: cur,
+            // Provide distribution if available for EV graded calculation
+            distribution: dist,
+            feeGBP: Number(feeInput.value || 15)
           })
         });
 
         const data = await resp.json().catch(()=> ({}));
-        if (!resp.ok){
-          const msg =
-            [data?.error, data?.detail].filter(Boolean).join(" — ") ||
-            `AI grading failed (HTTP ${resp.status})`;
-          throw new Error(msg);
-        }
+        if (!resp.ok) throw new Error(data?.error || `Pricing failed (HTTP ${resp.status})`);
 
-        setResultsFromAI(data);
-
-        setStatus("Done.");
-        toastShow("Grade complete.");
-      }catch(e){
+        price = data;
+        identPill.textContent = data.source ? `Price: ${data.source}` : "Price: OK";
+        identText.textContent = "Card identified and priced (where available).";
+        applyROI();
+      } catch (e){
         console.error(e);
-        toastShow(String(e?.message || "AI grading failed. Check /api/grade + OPENAI_API_KEY."));
-        setStatus("Error. Try again with clearer photos.");
-      }finally{
-        updateGradeBtn();
+        identPill.textContent = "Price unavailable";
+        identText.textContent = "Live pricing unavailable for this match. You can override raw value manually.";
+        price = null;
+        applyROI();
+      }
+    }
+
+    // IDENTIFY
+    identifyBtn.addEventListener("click", async ()=>{
+      if (!canProceed()) return toastShow("Add front + back first.");
+
+      try{
+        identPill.textContent = "Identifying…";
+        identText.textContent = "Reading card details from images…";
+        candidateWrap.style.display = "none";
+        candidateWrap.innerHTML = "";
+        gamePill.textContent = "Game: —";
+        cardPill.textContent = "Card: —";
+        ident = null;
+        identCandidates = [];
+        price = null;
+        applyROI();
+
+        const frontDataUrl = await fileToDataUrlCompressed(frontFile);
+        const backDataUrl  = await fileToDataUrlCompressed(backFile);
+
+        const resp = await fetch("/api/identify", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ frontDataUrl, backDataUrl })
+        });
+        const data = await resp.json().catch(()=> ({}));
+        if (!resp.ok) throw new Error(data?.error || `Identify failed (HTTP ${resp.status})`);
+
+        identCandidates = data.candidates || [];
+        if (!identCandidates.length) throw new Error("No candidates returned.");
+
+        // Auto-select if very confident
+        const best = identCandidates[0];
+        const bestConf = best?.confidence ?? 0;
+
+        gamePill.textContent = `Game: ${best.game || "—"}`;
+        cardPill.textContent = `Card: ${best.displayName || best.name || "—"}`;
+
+        if (bestConf >= 0.88 && identCandidates.length === 1){
+          ident = best;
+          identPill.textContent = "Identified";
+          identText.textContent = "High confidence match. Fetching live EU/UK price…";
+          toastShow("Card identified.");
+          await fetchPriceAndUpdate();
+        } else {
+          identPill.textContent = "Choose match";
+          identText.textContent = "Multiple plausible printings. Pick the best match.";
+          renderCandidates(identCandidates);
+          toastShow("Select the correct printing.");
+        }
+      } catch (e){
+        console.error(e);
+        identPill.textContent = "Identify failed";
+        identText.textContent = "Couldn’t identify reliably. Try a clearer front photo (name + set/number visible).";
+        toastShow(e.message || "Identify failed.");
       }
     });
 
-    downloadBtn.addEventListener('click', ()=>{
-      if (!lastReport) return;
-      const blob = new Blob([JSON.stringify(lastReport, null, 2)], {type:'application/json'});
-      const a = document.createElement('a');
+    // PRE-SCREEN (grade + distribution + issues)
+    function setPreScreenUI(rep){
+      // Main headline
+      gradeBig.innerHTML = `${Number(rep.mostLikely).toFixed(1)} <small>${rep.label || ""}</small>`;
+      gradeLabel.textContent = rep.label || "";
+
+      rangePill.textContent = `Range: ${rep.range?.[0]?.toFixed?.(1) ?? "—"}–${rep.range?.[1]?.toFixed?.(1) ?? "—"}`;
+      const conf = Math.max(0, Math.min(1, Number(rep.confidence || 0)));
+      confBar.style.width = `${Math.round(conf * 100)}%`;
+
+      // Subgrades
+      centEl.textContent = Number(rep.subgrades?.centering ?? 0).toFixed(1);
+      cornEl.textContent = Number(rep.subgrades?.corners ?? 0).toFixed(1);
+      edgeEl.textContent = Number(rep.subgrades?.edges ?? 0).toFixed(1);
+      surfEl.textContent = Number(rep.subgrades?.surface ?? 0).toFixed(1);
+
+      // Issues
+      issuesEl.innerHTML = "";
+      (rep.notes || []).slice(0,6).forEach(n=>{
+        const li = document.createElement("li");
+        li.textContent = n;
+        issuesEl.appendChild(li);
+      });
+      (rep.issues || []).slice(0,6).forEach(i=>{
+        const li = document.createElement("li");
+        li.textContent = `Issue: ${i}`;
+        issuesEl.appendChild(li);
+      });
+      if (!issuesEl.children.length){
+        issuesEl.innerHTML = "<li>No issues returned.</li>";
+      }
+
+      resultPill.textContent = "Ready";
+    }
+
+    runBtn.addEventListener("click", async ()=>{
+      if (!canProceed()) return toastShow("Add front + back first.");
+
+      setStatus("Preparing images…");
+      runBtn.disabled = true;
+      identifyBtn.disabled = true;
+      toastShow("Running pre-screen…");
+
+      try{
+        const frontDataUrl = await fileToDataUrlCompressed(frontFile);
+        const backDataUrl  = await fileToDataUrlCompressed(backFile);
+
+        setStatus("Grading…");
+
+        const resp = await fetch("/api/grade", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            frontDataUrl,
+            backDataUrl,
+            strict: modeStrict.checked
+          })
+        });
+
+        const data = await resp.json().catch(()=> ({}));
+        if (!resp.ok) throw new Error(data?.error || `Grade failed (HTTP ${resp.status})`);
+
+        gradeReport = data;
+        setPreScreenUI(data);
+        toastShow("Pre-screen complete.");
+        setStatus("Done.");
+
+        // After grading, try pricing if identified (or attempt identify-lite based on grade? no)
+        if (ident) await fetchPriceAndUpdate();
+        else applyROI();
+
+        // Build export report
+        fullReport = {
+          createdAt: new Date().toISOString(),
+          inputs: { strict: modeStrict.checked, fast: modeFast.checked },
+          identification: ident || null,
+          identificationCandidates: identCandidates || [],
+          grade: gradeReport,
+          price: price,
+          roi: {
+            currency: currencySel.value,
+            fee: Number(feeInput.value || 15),
+            rawOverride: rawOverride.value !== "" ? Number(rawOverride.value) : null
+          }
+        };
+
+        downloadBtn.disabled = false;
+        updateSteps();
+      } catch (e){
+        console.error(e);
+        toastShow(e.message || "Pre-screen failed.");
+        setStatus("Error. Try clearer photos.");
+      } finally {
+        runBtn.disabled = !canProceed();
+        identifyBtn.disabled = !canProceed();
+        updateSteps();
+      }
+    });
+
+    // Export
+    downloadBtn.addEventListener("click", ()=>{
+      if (!fullReport) return;
+      const blob = new Blob([JSON.stringify(fullReport, null, 2)], {type:"application/json"});
+      const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `grd-ai-grade-front-back-report.json`;
+      a.download = `grd-prescreen-report.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1063,12 +1600,9 @@
     });
 
     // Init
-    resetResults();
-    updateGradeBtn();
-
-    // Default placeholders for previews (avoid broken image icon)
-    frontImg.alt = "Front preview";
-    backImg.alt = "Back preview";
+    resetRight();
+    updateButtons();
+    updateSteps();
   </script>
 </body>
 </html>
