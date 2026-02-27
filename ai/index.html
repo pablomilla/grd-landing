@@ -23,7 +23,6 @@
       --shadow2: 0 14px 40px rgba(11,15,20,.10);
       --radius: 24px;
       --glass: rgba(255,255,255,.55);
-      --focus: 0 0 0 4px rgba(11,15,20,.10);
       --mx: 50%;
       --my: 35%;
     }
@@ -82,7 +81,7 @@
     .panel{
       border:1px solid rgba(11,15,20,.10);
       border-radius: var(--radius);
-      background: var(--glass);
+      background: rgba(255,255,255,.55);
       backdrop-filter: blur(22px) saturate(1.25);
       -webkit-backdrop-filter: blur(22px) saturate(1.25);
       box-shadow: var(--shadow);
@@ -179,6 +178,12 @@
       backdrop-filter: blur(18px) saturate(1.2);
       -webkit-backdrop-filter: blur(18px) saturate(1.2);
     }
+    .btn.disabled{
+      opacity:.55;
+      pointer-events:none;
+      transform:none !important;
+      box-shadow:none !important;
+    }
     input[type="file"]{display:none;}
     .hint{color:var(--muted); font-size:12px; line-height:1.45;}
     .hint b{color:var(--fg)}
@@ -203,14 +208,6 @@
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       overflow:hidden; box-shadow: var(--shadow2); position:relative;
     }
-    .preview::before{
-      content:""; position:absolute; inset:-55%;
-      background: linear-gradient(120deg, transparent 38%, rgba(255,255,255,.55) 50%, transparent 62%);
-      transform: translateX(-35%) rotate(18deg);
-      animation: sheen 4.6s ease-in-out infinite;
-      pointer-events:none; opacity:.7; mix-blend-mode: screen;
-    }
-    @keyframes sheen{ 0%{transform: translateX(-55%) rotate(18deg);} 50%{transform: translateX(8%) rotate(18deg);} 100%{transform: translateX(55%) rotate(18deg);} }
     .img{width:100%; display:block; aspect-ratio: 3 / 4; object-fit: cover; background: rgba(11,15,20,.04);}
     .cap{
       display:flex; justify-content:space-between; align-items:center; gap:10px;
@@ -276,11 +273,6 @@
       display:flex; gap:10px; align-items:center; justify-content:center; text-align:center;
     }
     .toast.show{opacity:1; transform: translateX(-50%) translateY(0);}
-    .toast .tDot{
-      width:8px;height:8px;border-radius:999px;background:#0b0f14;
-      box-shadow: 0 0 0 4px rgba(11,15,20,.08);
-      flex:0 0 auto;
-    }
 
     .modal{position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 18px; z-index: 1000;}
     .modal.show{ display:flex; }
@@ -296,35 +288,21 @@
       animation: camIn .28s cubic-bezier(.2,.8,.2,1) forwards;
     }
     @keyframes camIn{ to{ transform: translateY(0); opacity: 1; } }
-    .modalCard::before{
-      content:""; position:absolute; inset:-2px;
-      background:
-        radial-gradient(700px 320px at 15% 10%, rgba(255,255,255,.58), transparent 62%),
-        radial-gradient(520px 260px at 85% 18%, rgba(255,255,255,.34), transparent 62%),
-        linear-gradient(180deg, rgba(255,255,255,.22), transparent 35%, rgba(255,255,255,.10));
-      pointer-events:none; opacity:.75; mix-blend-mode: screen;
-    }
-    .modalCard::after{
-      content:""; position:absolute; inset:0; border-radius: inherit;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
-      pointer-events:none; opacity:.9;
-    }
-
     .modalInner{ position:relative; padding: 18px; }
     .modalTop{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap;}
     .modalTitle{ font-weight: 820; letter-spacing:-0.03em; margin:0; }
     .modalSub{ margin:6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
 
-    .meter{display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 240px;}
+    .meter{display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 260px;}
     .meterPill{
       border:1px solid rgba(11,15,20,.10); border-radius:999px;
       padding:8px 10px; background: rgba(255,255,255,.62);
       backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
-      font-size:12px; color: var(--muted); max-width: 360px;
+      font-size:12px; color: var(--muted); max-width: 420px;
       text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    .meterBar{width: 240px; height: 8px; border-radius: 999px; border: 1px solid rgba(11,15,20,.10); background: rgba(255,255,255,.55); overflow:hidden;}
-    .meterFill{height:100%; width: 0%; border-radius:999px; background: rgba(11,15,20,.78); transform-origin: left center; transition: width .10s linear; opacity:.9;}
+    .meterBar{width: 260px; height: 8px; border-radius: 999px; border: 1px solid rgba(11,15,20,.10); background: rgba(255,255,255,.55); overflow:hidden;}
+    .meterFill{height:100%; width: 0%; border-radius:999px; background: rgba(11,15,20,.78); transition: width .10s linear; opacity:.9;}
 
     .camStage{
       border-radius: 22px; border:1px solid rgba(11,15,20,.10);
@@ -377,6 +355,33 @@
       gap:8px;
     }
     .chip b{color:var(--fg); font-weight:780}
+
+    /* Flip overlay */
+    .flipOverlay{
+      position:absolute;
+      inset:0;
+      display:none;
+      place-items:center;
+      padding:18px;
+      background: rgba(11,15,20,.28);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .flipOverlay.show{display:grid;}
+    .flipCard{
+      width:min(520px, 92%);
+      border-radius: 22px;
+      border:1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.62);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      box-shadow: 0 20px 70px rgba(0,0,0,.20);
+      padding:16px;
+      text-align:center;
+    }
+    .flipTitle{margin:0; font-weight:860; letter-spacing:-0.03em;}
+    .flipSub{margin:8px 0 12px; color:var(--muted); font-size:13px; line-height:1.45;}
+    .flipActions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
 
     @media (prefers-reduced-motion: reduce){
       *{animation:none !important; transition:none !important;}
@@ -438,7 +443,7 @@
 
               <div class="hint">
                 <b>Fast</b> compresses images before upload. <b>Strict</b> grades a little harsher and uses higher detail uploads.
-                <b>Frame crop</b> crops exactly to the on-screen guide (recommended).
+                <b>Frame crop</b> crops exactly to the on-screen guide.
               </div>
             </div>
 
@@ -538,11 +543,11 @@
         <div class="modalTop">
           <div>
             <h3 class="modalTitle">Live camera</h3>
-            <p class="modalSub">Hold steady until the bar fills — it will capture Front then Back.</p>
+            <p class="modalSub">Hold steady to capture the <b>front</b>. Then flip and tap <b>Start Back Capture</b>.</p>
           </div>
 
           <div class="meter" aria-label="Capture meter">
-            <div class="meterPill" id="meterText">Hold steady to capture…</div>
+            <div class="meterPill" id="meterText">Hold steady…</div>
             <div class="meterBar" aria-hidden="true">
               <div class="meterFill" id="meterFill"></div>
             </div>
@@ -559,13 +564,25 @@
           <div class="cropBox" id="cropBox" style="left:8%;top:6%;width:84%;height:88%;"></div>
           <div class="cropLabel" id="cropLabel"><b>Frame crop</b> align card to outline</div>
           <div class="burst" id="burst"></div>
+
+          <!-- Flip overlay (blocks meter + capture) -->
+          <div class="flipOverlay" id="flipOverlay" aria-hidden="true">
+            <div class="flipCard">
+              <h3 class="flipTitle">Front captured.</h3>
+              <p class="flipSub">Flip the card to the back side. When ready, tap below to start back capture.</p>
+              <div class="flipActions">
+                <button class="btn" id="startBackBtn" type="button">Start Back Capture</button>
+                <button class="btn secondary" id="retakeFrontInModal" type="button">Retake Front</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="camBar">
           <div class="seg">
             <button class="btn secondary" id="camSwitch" type="button">Switch camera</button>
             <button class="btn secondary" id="camClose" type="button">Close</button>
-            <span class="kbdHint" id="camHint">Tip: a tiny tilt helps with reflections.</span>
+            <span class="kbdHint" id="camHint">Tip: move slightly to find a glare-free angle.</span>
           </div>
 
           <div class="seg">
@@ -586,16 +603,6 @@
   </div>
 
   <script>
-    // Ambient pointer light
-    function setVars(x, y){
-      const w = window.innerWidth, h = window.innerHeight;
-      const mx = Math.max(0, Math.min(100, (x / w) * 100));
-      const my = Math.max(0, Math.min(100, (y / h) * 100));
-      document.documentElement.style.setProperty('--mx', mx + '%');
-      document.documentElement.style.setProperty('--my', my + '%');
-    }
-    window.addEventListener('pointermove', (e) => setVars(e.clientX, e.clientY), {passive:true});
-
     // Footer time
     const yearEl = document.getElementById('year');
     const timeEl = document.getElementById('time');
@@ -639,7 +646,6 @@
 
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
-
     const cv = document.getElementById('cv');
 
     // Camera modal refs
@@ -651,18 +657,19 @@
     const camSwitch = document.getElementById('camSwitch');
     const snapFront = document.getElementById('snapFront');
     const snapBack = document.getElementById('snapBack');
-
     const camCanvas = document.getElementById('camCanvas');
     const camWork = document.getElementById('camWork');
-
     const cropBoxEl = document.getElementById('cropBox');
     const cropLabelEl = document.getElementById('cropLabel');
     const burstEl = document.getElementById('burst');
-
     const meterText = document.getElementById('meterText');
     const meterFill = document.getElementById('meterFill');
     const chipFront = document.getElementById('chipFront');
     const chipBack = document.getElementById('chipBack');
+
+    const flipOverlay = document.getElementById('flipOverlay');
+    const startBackBtn = document.getElementById('startBackBtn');
+    const retakeFrontInModal = document.getElementById('retakeFrontInModal');
 
     let frontFileObj = null;
     let backFileObj = null;
@@ -675,22 +682,18 @@
       toastMsg.textContent = msg;
       toast.classList.add('show');
       clearTimeout(toast._t);
-      toast._t = setTimeout(()=>toast.classList.remove('show'), 2400);
+      toast._t = setTimeout(()=>toast.classList.remove('show'), 2200);
     }
-
     function setStatus(text){
       statusEl.innerHTML = `<span class="dot"></span><span>${text}</span>`;
     }
-
     function canGrade(){ return !!(frontFileObj && backFileObj); }
-
     function updateGradeBtn(){
       gradeBtn.disabled = !canGrade();
       if (canGrade()) setStatus("Ready. Click “Run AI Grade”.");
       else if (frontFileObj || backFileObj) setStatus("Add the missing side to enable grading.");
       else setStatus("Upload/capture front + back to begin.");
     }
-
     function resetResults(){
       gradeEl.innerHTML = `— <small id="label">Upload both</small>`;
       centEl.textContent = cornEl.textContent = edgeEl.textContent = surfEl.textContent = '—';
@@ -698,49 +701,11 @@
       downloadBtn.disabled = true;
       lastReport = null;
     }
-
-    function setResultsFromAI(data){
-      gradeEl.innerHTML = `${Number(data.overall).toFixed(1)} <small>${data.label || ''}</small>`;
-      centEl.textContent = Number(data.subgrades?.centering ?? 0).toFixed(1);
-      cornEl.textContent = Number(data.subgrades?.corners ?? 0).toFixed(1);
-      edgeEl.textContent = Number(data.subgrades?.edges ?? 0).toFixed(1);
-      surfEl.textContent = Number(data.subgrades?.surface ?? 0).toFixed(1);
-
-      notesEl.innerHTML = '';
-      const notes = Array.isArray(data.notes) ? data.notes : [];
-      const issues = Array.isArray(data.issues) ? data.issues : [];
-
-      if (notes.length === 0 && issues.length === 0){
-        const li = document.createElement('li');
-        li.textContent = "No notes returned.";
-        notesEl.appendChild(li);
-      } else {
-        notes.forEach(n=>{
-          const li = document.createElement('li');
-          li.textContent = n;
-          notesEl.appendChild(li);
-        });
-        issues.slice(0, 6).forEach(i=>{
-          const li = document.createElement('li');
-          li.textContent = `Issue: ${i}`;
-          notesEl.appendChild(li);
-        });
-      }
-
-      downloadBtn.disabled = false;
-      lastReport = {
-        ...data,
-        inputs: { strict: isStrictMode(), fast: isFastMode(), autoCrop: !!autoCropToggle.checked },
-        createdAt: new Date().toISOString()
-      };
-    }
-
     function fileLabel(f){
       if (!f) return "—";
       const kb = Math.round(f.size / 1024);
       return `${f.name} · ${kb}KB`;
     }
-
     function setPreviewFromFile(imgEl, fileObj, metaEl){
       if (!fileObj) return;
       const url = URL.createObjectURL(fileObj);
@@ -766,8 +731,7 @@
       const w = Math.max(1, Math.round(img.width * scale));
       const h = Math.max(1, Math.round(img.height * scale));
 
-      cv.width = w;
-      cv.height = h;
+      cv.width = w; cv.height = h;
       const ctx = cv.getContext("2d");
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
@@ -811,6 +775,7 @@
     clearBackBtn.addEventListener("click", clearBack);
     clearBtn.addEventListener("click", ()=>{ clearFront(); clearBack(); toastShow("Cleared."); });
 
+    // Drag & drop
     ['dragenter','dragover'].forEach(evt=>{
       drop.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover'); });
     });
@@ -829,28 +794,13 @@
       updateGradeBtn();
     });
 
-    [modeFast, modeStrict].forEach(el => el.addEventListener('change', () => {
-      resetResults(); updateGradeBtn();
-      toastShow(isFastMode() ? "Mode: Fast" : "Mode: Strict");
-    }));
-
+    // Demo images (simple)
     demoBtn.addEventListener('click', ()=>{
       const mk = (title, sub) => `
       <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
-        <defs>
-          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#0b0f14" stop-opacity=".9"/>
-            <stop offset="1" stop-color="#ffffff" stop-opacity=".35"/>
-          </linearGradient>
-          <radialGradient id="r" cx="30%" cy="25%" r="70%">
-            <stop offset="0" stop-color="#ffffff" stop-opacity=".35"/>
-            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-          </radialGradient>
-        </defs>
-        <rect x="60" y="60" width="780" height="1080" rx="48" fill="url(#g)"/>
-        <rect x="90" y="90" width="720" height="1020" rx="38" fill="rgba(255,255,255,.18)" />
-        <ellipse cx="320" cy="260" rx="360" ry="220" fill="url(#r)"/>
-        <text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle"
+        <rect x="60" y="60" width="780" height="1080" rx="48" fill="#0b0f14" opacity=".85"/>
+        <rect x="90" y="90" width="720" height="1020" rx="38" fill="rgba(255,255,255,.16)" />
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
           font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial"
           font-size="110" font-weight="850" fill="#ffffff">${title}</text>
         <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle"
@@ -859,29 +809,43 @@
       </svg>`;
       const frontData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(mk('grd.', 'demo FRONT'));
       const backData  = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(mk('grd.', 'demo BACK'));
+      fetch(frontData).then(r=>r.blob()).then(b=>setFrontFile(new File([b],"demo-front.svg",{type:b.type||"image/svg+xml"})));
+      fetch(backData).then(r=>r.blob()).then(b=>setBackFile(new File([b],"demo-back.svg",{type:b.type||"image/svg+xml"})));
+      toastShow("Demo images loaded.");
+    });
 
-      async function dataUrlToFile(dataUrl, name){
-        const r = await fetch(dataUrl);
-        const b = await r.blob();
-        return new File([b], name, { type: b.type || "image/svg+xml" });
+    // Results
+    function setResultsFromAI(data){
+      gradeEl.innerHTML = `${Number(data.overall).toFixed(1)} <small>${data.label || ''}</small>`;
+      centEl.textContent = Number(data.subgrades?.centering ?? 0).toFixed(1);
+      cornEl.textContent = Number(data.subgrades?.corners ?? 0).toFixed(1);
+      edgeEl.textContent = Number(data.subgrades?.edges ?? 0).toFixed(1);
+      surfEl.textContent = Number(data.subgrades?.surface ?? 0).toFixed(1);
+
+      notesEl.innerHTML = '';
+      const notes = Array.isArray(data.notes) ? data.notes : [];
+      const issues = Array.isArray(data.issues) ? data.issues : [];
+      if (notes.length === 0 && issues.length === 0){
+        notesEl.innerHTML = `<li>No notes returned.</li>`;
+      } else {
+        notes.forEach(n=>{ const li=document.createElement('li'); li.textContent=n; notesEl.appendChild(li); });
+        issues.slice(0,6).forEach(i=>{ const li=document.createElement('li'); li.textContent=`Issue: ${i}`; notesEl.appendChild(li); });
       }
 
-      Promise.all([dataUrlToFile(frontData, "demo-front.svg"), dataUrlToFile(backData, "demo-back.svg")])
-        .then(([f1, f2])=>{ setFrontFile(f1); setBackFile(f2); toastShow("Demo images loaded."); })
-        .catch(()=>{ frontImg.src = frontData; backImg.src = backData; frontMeta.textContent="demo-front.svg"; backMeta.textContent="demo-back.svg"; toastShow("Demo previews loaded."); });
-    });
+      downloadBtn.disabled = false;
+      lastReport = { ...data, inputs:{ strict:isStrictMode(), fast:isFastMode(), autoCrop:!!autoCropToggle.checked }, createdAt:new Date().toISOString() };
+    }
 
     gradeBtn.addEventListener('click', async ()=>{
       if (!canGrade()) return toastShow("Upload front + back first.");
       setStatus("Preparing images…");
       gradeBtn.disabled = true;
       toastShow("Uploading for AI grading…");
-
       try{
         const frontDataUrl = await fileToDataUrlCompressed(frontFileObj);
         const backDataUrl = await fileToDataUrlCompressed(backFileObj);
-        setStatus("AI grading…");
 
+        setStatus("AI grading…");
         const resp = await fetch("/api/grade", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -920,53 +884,84 @@
     });
 
     // =========================
-    // Live Camera: SUPER forgiving bar that ALWAYS fills in normal light
+    // Live Camera with FLIP GATE
     // =========================
     let camStream = null;
     let camFacing = "environment";
     let camStarting = false;
     let meterRAF = null;
 
-    let hold = 0;                 // 0..1
-    let capturing = false;         // lock
-    let goodEnoughMs = 0;          // time spent above "good enough"
-    const GOOD_ENOUGH_AT = 0.70;   // capture threshold
-    const GOOD_ENOUGH_HOLD = 600;  // ms above threshold to trigger
+    let hold = 0;
+    let capturing = false;
 
-    // Frame guide crop (matches cropBox)
+    // stage gate:
+    // "front" -> capture front
+    // "flip"  -> pause + show overlay
+    // "back"  -> capture back
+    let captureStage = "front";
+
+    // "good enough" logic
+    let aboveMs = 0;
+    const THRESH = 0.84;       // capture threshold (slower / more deliberate)
+    const HOLD_MS = 750;       // must stay above threshold this long
+
+    // Frame guide crop
     const GUIDE = { x: 0.08, y: 0.06, w: 0.84, h: 0.88 };
+
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
     function showCamModal(){
       camModal.classList.add('show');
-      camModal.setAttribute('aria-hidden', 'false');
+      camModal.setAttribute('aria-hidden','false');
       document.body.style.overflow = "hidden";
       syncChips();
       setHold(0);
-      goodEnoughMs = 0;
+      aboveMs = 0;
+      capturing = false;
+      captureStage = frontFileObj ? (backFileObj ? "front" : "back") : "front"; // default logic
+      flipOverlay.classList.remove('show');
+      flipOverlay.setAttribute('aria-hidden','true');
+      updateMeterCopy();
       cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Frame crop</b> align card to outline` : `<b>Crop</b> off`;
       cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
     }
+
     function hideCamModal(){
       camModal.classList.remove('show');
-      camModal.setAttribute('aria-hidden', 'true');
+      camModal.setAttribute('aria-hidden','true');
       document.body.style.overflow = "";
       stopCamera();
       setHold(0);
-      goodEnoughMs = 0;
+      aboveMs = 0;
       capturing = false;
+      flipOverlay.classList.remove('show');
+      flipOverlay.setAttribute('aria-hidden','true');
     }
 
-    function syncChips(){
-      chipFront.innerHTML = frontFileObj ? `<b>Front</b>: ✓` : `<b>Front</b>: —`;
-      chipBack.innerHTML  = backFileObj  ? `<b>Back</b>: ✓`  : `<b>Back</b>: —`;
-      snapFront.textContent = frontFileObj ? "Retake Front" : "Snap Front";
-      snapBack.textContent  = backFileObj  ? "Retake Back"  : "Snap Back";
+    function setHold(v){
+      hold = clamp(v, 0, 1);
+      meterFill.style.width = `${Math.round(hold*100)}%`;
+    }
+
+    function updateMeterCopy(score=null){
+      if (captureStage === "flip"){
+        meterText.textContent = "Flip to the back side, then tap Start Back Capture";
+        return;
+      }
+      const side = captureStage === "front" ? "front" : "back";
+      if (score == null){
+        meterText.textContent = `Hold steady to capture ${side}…`;
+        return;
+      }
+
+      // don't say "Great" immediately: require some progress first
+      if (score > 0.88 && hold > 0.55) meterText.textContent = `Locked in — capturing ${side}…`;
+      else if (score > 0.62) meterText.textContent = `Steady — filling for ${side}…`;
+      else meterText.textContent = `Hold steady — filling for ${side}…`;
     }
 
     function playBurst(){
-      burstEl.classList.remove('play');
-      void burstEl.offsetWidth;
-      burstEl.classList.add('play');
+      burstEl.classList.remove('play'); void burstEl.offsetWidth; burstEl.classList.add('play');
     }
 
     async function startCamera(){
@@ -977,12 +972,12 @@
         showCamModal();
 
         const constraints = {
-          audio: false,
-          video: {
-            facingMode: { ideal: camFacing },
-            width: { ideal: 1440 },
-            height: { ideal: 1920 },
-            aspectRatio: { ideal: 3/4 }
+          audio:false,
+          video:{
+            facingMode:{ ideal: camFacing },
+            width:{ ideal: 1440 },
+            height:{ ideal: 1920 },
+            aspectRatio:{ ideal: 3/4 }
           }
         };
 
@@ -991,11 +986,11 @@
         await camVideo.play().catch(()=>{});
         toastShow("Camera ready.");
         meterLoopStart();
-      } catch (e){
+      }catch(e){
         console.error(e);
         toastShow("Camera permission denied or unavailable.");
         hideCamModal();
-      } finally {
+      }finally{
         camStarting = false;
       }
     }
@@ -1003,7 +998,7 @@
     function stopCamera(){
       meterLoopStop();
       if (!camStream) return;
-      try{ camStream.getTracks().forEach(t => t.stop()); }catch(_){}
+      try{ camStream.getTracks().forEach(t=>t.stop()); }catch(_){}
       camStream = null;
       camVideo.srcObject = null;
     }
@@ -1014,17 +1009,16 @@
       await startCamera();
     }
 
-    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-
     function meterLoopStart(){
       meterLoopStop();
       let lastT = performance.now();
       const loop = () => {
         if (!camModal.classList.contains('show') || !camVideo.videoWidth) return;
         const now = performance.now();
-        const dt = Math.min(80, Math.max(0, now - lastT)); // ms
+        const dt = Math.min(80, Math.max(0, now - lastT));
         lastT = now;
-        analyzeAndFill(dt);
+
+        if (captureStage !== "flip") analyzeAndFill(dt);
         meterRAF = requestAnimationFrame(loop);
       };
       meterRAF = requestAnimationFrame(loop);
@@ -1034,22 +1028,83 @@
       meterRAF = null;
     }
 
-    function setHold(v){
-      hold = clamp(v, 0, 1);
-      meterFill.style.width = `${Math.round(hold * 100)}%`;
+    // More deliberate fill: slower + requires sustained stability
+    function analyzeAndFill(dtMs){
+      const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+      if (!vw || !vh) return;
+
+      const targetW = 260;
+      const scale = targetW / vw;
+      const w = Math.max(1, Math.round(vw * scale));
+      const h = Math.max(1, Math.round(vh * scale));
+
+      camWork.width = w; camWork.height = h;
+      const ctx = camWork.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(camVideo, 0, 0, w, h);
+      const img = ctx.getImageData(0,0,w,h);
+      const d = img.data;
+
+      let sumL = 0;
+      const L = new Float32Array(w*h);
+
+      for (let i=0,p=0;i<d.length;i+=4,p++){
+        const r=d[i], g=d[i+1], b=d[i+2];
+        const lum = 0.2126*r + 0.7152*g + 0.0722*b;
+        L[p]=lum; sumL+=lum;
+      }
+      const mean = sumL/(w*h);
+
+      // hard block only if extremely dark
+      if (mean < 28){
+        updateMeterCopy(0);
+        setHold(hold - 0.04);
+        aboveMs = 0;
+        return;
+      }
+
+      // focus proxy (simple gradients)
+      let gradSum = 0;
+      const x0=Math.round(w*0.20), x1=Math.round(w*0.80);
+      const y0=Math.round(h*0.20), y1=Math.round(h*0.80);
+      for (let y=y0+1;y<y1-1;y++){
+        for (let x=x0+1;x<x1-1;x++){
+          const i=y*w+x;
+          const gx = -L[i-1] + L[i+1];
+          const gy = -L[i-w] + L[i+w];
+          gradSum += (Math.abs(gx)+Math.abs(gy));
+        }
+      }
+      const denom = Math.max(1,(x1-x0)*(y1-y0));
+      const gradAvg = gradSum/denom;
+      const focus = clamp((gradAvg - 7) / 26, 0, 1);
+
+      // brightness score broad
+      const bright = clamp((mean - 35) / 140, 0, 1);
+
+      // stability score (deliberate)
+      const score = clamp(0.55*bright + 0.45*focus, 0, 1);
+
+      updateMeterCopy(score);
+
+      // slower fill, more steady feel
+      const fill = (0.006 + score*0.018);
+      const decay = 0.010;
+
+      if (score > 0.45) setHold(hold + fill);
+      else setHold(hold - decay);
+
+      if (hold >= THRESH) aboveMs += dtMs;
+      else aboveMs = 0;
+
+      if (!capturing && hold >= 0.999) captureStageNow();
+      else if (!capturing && aboveMs >= HOLD_MS) captureStageNow();
     }
 
-    function nextSide(){
-      if (!frontFileObj) return "front";
-      if (!backFileObj) return "back";
-      return "back";
-    }
-
-    async function captureNext(){
+    async function captureStageNow(){
       if (capturing) return;
       capturing = true;
 
-      const side = nextSide();
+      const side = captureStage; // "front" or "back"
       meterText.textContent = `Capturing ${side}…`;
       playBurst();
 
@@ -1063,117 +1118,25 @@
         toastShow("Couldn’t capture. Try again.");
       }
 
+      // after capture:
       setHold(0);
-      goodEnoughMs = 0;
+      aboveMs = 0;
       capturing = false;
 
-      if (canGrade()) hideCamModal();
-      else meterText.textContent = `Hold steady to capture ${nextSide()}…`;
-    }
-
-    // ✅ NEW forgiving analysis: bar fills on "usable" not "perfect"
-    function analyzeAndFill(dtMs){
-      const vw = camVideo.videoWidth;
-      const vh = camVideo.videoHeight;
-      if (!vw || !vh) return;
-
-      // downscale (fast)
-      const targetW = 260;
-      const scale = targetW / vw;
-      const w = Math.max(1, Math.round(vw * scale));
-      const h = Math.max(1, Math.round(vh * scale));
-
-      camWork.width = w;
-      camWork.height = h;
-      const ctx = camWork.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(camVideo, 0, 0, w, h);
-
-      const img = ctx.getImageData(0, 0, w, h);
-      const d = img.data;
-
-      // Very lightweight metrics:
-      // - brightness mean
-      // - highlight pct (very forgiving)
-      // - focus proxy (very forgiving)
-      let sumL = 0;
-      let highlights = 0;
-
-      const L = new Float32Array(w*h);
-
-      for (let i=0, p=0; i<d.length; i+=4, p++){
-        const r=d[i], g=d[i+1], b=d[i+2];
-        const lum = 0.2126*r + 0.7152*g + 0.0722*b;
-        L[p] = lum;
-        sumL += lum;
-        if (lum > 254) highlights++; // only extreme specular
-      }
-
-      const n = w*h;
-      const mean = sumL / n;
-      const hiPct = highlights / n;
-
-      // focus proxy: average gradient magnitude (super forgiving)
-      let gradSum = 0;
-      const x0 = Math.round(w*0.18), x1 = Math.round(w*0.82);
-      const y0 = Math.round(h*0.18), y1 = Math.round(h*0.82);
-
-      for (let y=y0+1; y<y1-1; y++){
-        for (let x=x0+1; x<x1-1; x++){
-          const i = y*w + x;
-          const gx = -L[i-1] + L[i+1];
-          const gy = -L[i-w] + L[i+w];
-          gradSum += (Math.abs(gx) + Math.abs(gy));
+      if (side === "front"){
+        // STOP and show flip overlay
+        captureStage = "flip";
+        flipOverlay.classList.add('show');
+        flipOverlay.setAttribute('aria-hidden','false');
+        updateMeterCopy();
+      } else {
+        // back done
+        if (canGrade()) hideCamModal();
+        else {
+          // if something odd, continue
+          captureStage = !frontFileObj ? "front" : "back";
+          updateMeterCopy();
         }
-      }
-      const denom = Math.max(1, (x1-x0)*(y1-y0));
-      const gradAvg = gradSum / denom;
-      const focus = clamp((gradAvg - 6) / 24, 0, 1); // tuned for this simpler gradient
-
-      // Only HARD block is extremely dark
-      if (mean < 30){
-        meterText.textContent = "Too dark — add light";
-        setHold(hold - 0.05);
-        goodEnoughMs = 0;
-        return;
-      }
-
-      // Build a forgiving "quality score" 0..1
-      // - brightness in a broad sweet range
-      // - focus helps but doesn't block
-      // - highlights reduce a bit but doesn't block
-      const brightScore = clamp((mean - 35) / 140, 0, 1); // broad
-      const glarePenalty = clamp(hiPct / 0.08, 0, 1);     // very forgiving
-
-      const score = clamp(
-        0.55 * brightScore +
-        0.35 * focus +
-        0.10 * (1 - glarePenalty),
-        0, 1
-      );
-
-      // UI text (informational only)
-      const side = nextSide();
-      if (score > 0.80) meterText.textContent = `Great — capturing ${side} soon…`;
-      else if (score > 0.55) meterText.textContent = `Good — hold steady for ${side}…`;
-      else meterText.textContent = `Keep steady — filling for ${side}…`;
-
-      // Fill behavior:
-      // - always fills a little in normal light
-      // - fills faster as score increases
-      const fillRate = 0.010 + score * 0.030;   // per frame approx
-      const decayRate = 0.006;                  // slow decay
-
-      // if score is low but not dark, still fill slowly (so it eventually captures)
-      if (score > 0.28) setHold(hold + fillRate);
-      else setHold(hold - decayRate);
-
-      // "good enough" timer
-      if (hold >= GOOD_ENOUGH_AT) goodEnoughMs += dtMs;
-      else goodEnoughMs = 0;
-
-      // Capture rules
-      if (!capturing && (hold >= 0.999 || goodEnoughMs >= GOOD_ENOUGH_HOLD)){
-        captureNext();
       }
     }
 
@@ -1181,15 +1144,13 @@
       const vw = camVideo.videoWidth || 1440;
       const vh = camVideo.videoHeight || 1920;
 
-      camCanvas.width = vw;
-      camCanvas.height = vh;
+      camCanvas.width = vw; camCanvas.height = vh;
       const ctx = camCanvas.getContext("2d");
       ctx.drawImage(camVideo, 0, 0, vw, vh);
 
       let outCanvas = camCanvas;
 
       if (autoCropToggle.checked){
-        const GUIDE = { x: 0.08, y: 0.06, w: 0.84, h: 0.88 };
         const x = Math.round(GUIDE.x * vw);
         const y = Math.round(GUIDE.y * vh);
         const w = Math.round(GUIDE.w * vw);
@@ -1201,8 +1162,7 @@
         const sh = clamp(h, 1, vh - sy);
 
         const c = document.createElement("canvas");
-        c.width = sw;
-        c.height = sh;
+        c.width = sw; c.height = sh;
         const cctx = c.getContext("2d");
         cctx.drawImage(camCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
         outCanvas = c;
@@ -1211,40 +1171,69 @@
       const blob = await new Promise((resolve) => {
         outCanvas.toBlob((b) => resolve(b), "image/jpeg", 0.92);
       });
-
       if (!blob) return null;
       return new File([blob], name, { type: "image/jpeg" });
     }
 
-    // Camera controls
+    function syncChips(){
+      chipFront.innerHTML = frontFileObj ? `<b>Front</b>: ✓` : `<b>Front</b>: —`;
+      chipBack.innerHTML  = backFileObj  ? `<b>Back</b>: ✓`  : `<b>Back</b>: —`;
+      snapFront.textContent = frontFileObj ? "Retake Front" : "Snap Front";
+      snapBack.textContent  = backFileObj  ? "Retake Back"  : "Snap Back";
+    }
+
+    // Modal buttons
     cameraBtn?.addEventListener('click', () => startCamera());
     camClose?.addEventListener('click', hideCamModal);
     camBg?.addEventListener('click', hideCamModal);
     camSwitch?.addEventListener('click', switchCamera);
 
-    // Manual snaps still work
+    // Manual snaps still work (and respect flip overlay if visible)
     snapFront?.addEventListener('click', async ()=>{
-      playBurst();
-      const f = await snapToFile(`grd-front-${Date.now()}.jpg`);
-      if (f){ setFrontFile(f); syncChips(); toastShow("Front captured."); setHold(0); goodEnoughMs=0; }
+      if (captureStage === "flip") return;
+      captureStage = "front";
+      await captureStageNow();
     });
     snapBack?.addEventListener('click', async ()=>{
-      playBurst();
-      const f = await snapToFile(`grd-back-${Date.now()}.jpg`);
-      if (f){ setBackFile(f); syncChips(); toastShow("Back captured."); setHold(0); goodEnoughMs=0; if (canGrade()) hideCamModal(); }
+      if (captureStage === "flip") return;
+      captureStage = "back";
+      await captureStageNow();
     });
 
+    // Flip overlay actions
+    startBackBtn.addEventListener('click', ()=>{
+      flipOverlay.classList.remove('show');
+      flipOverlay.setAttribute('aria-hidden','true');
+      captureStage = "back";
+      setHold(0);
+      aboveMs = 0;
+      updateMeterCopy();
+      toastShow("Back capture ready.");
+    });
+
+    retakeFrontInModal.addEventListener('click', ()=>{
+      // allow retake front immediately
+      flipOverlay.classList.remove('show');
+      flipOverlay.setAttribute('aria-hidden','true');
+      captureStage = "front";
+      setHold(0);
+      aboveMs = 0;
+      updateMeterCopy();
+      toastShow("Retake front.");
+    });
+
+    // Main page retake opens camera
     retakeFrontBtn?.addEventListener('click', () => startCamera());
     retakeBackBtn?.addEventListener('click', () => startCamera());
-
-    window.addEventListener('keydown', (e)=>{
-      if (e.key === "Escape" && camModal.classList.contains('show')) hideCamModal();
-    });
 
     autoCropToggle.addEventListener('change', ()=>{
       cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Frame crop</b> align card to outline` : `<b>Crop</b> off`;
       cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
       toastShow(autoCropToggle.checked ? "Frame crop on" : "Crop off");
+    });
+
+    window.addEventListener('keydown', (e)=>{
+      if (e.key === "Escape" && camModal.classList.contains('show')) hideCamModal();
     });
 
     // Init
