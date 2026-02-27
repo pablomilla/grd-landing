@@ -1,169 +1,124 @@
-// api/grade.js (Vercel Serverless Function - Node)
-// POST JSON: { frontDataUrl, backDataUrl, strict }
-// Returns: grading JSON or { error, detail }
+export const config = { runtime: "nodejs" };
 
-module.exports = async function handler(req, res) {
-  const fail = (code, error, detail) => res.status(code).json({ error, detail });
+function json(res, status, body){
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(body));
+}
 
-  try {
-    if (req.method !== "POST") {
-      res.setHeader("Allow", "POST");
-      return fail(405, "Method not allowed", "Use POST with JSON body.");
-    }
+async function readBody(req){
+  return await new Promise((resolve, reject)=>{
+    let data = "";
+    req.on("data", c => data += c);
+    req.on("end", ()=> {
+      try{ resolve(JSON.parse(data || "{}")); } catch(e){ reject(e); }
+    });
+  });
+}
 
-    // Parse body robustly (Vercel may already parse JSON into req.body)
-    let body = req.body;
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-    if (!body || typeof body === "string") {
-      const raw =
-        typeof body === "string"
-          ? body
-          : await new Promise((resolve, reject) => {
-              let data = "";
-              req.on("data", (chunk) => (data += chunk));
-              req.on("end", () => resolve(data));
-              req.on("error", reject);
-            });
+export default async function handler(req, res){
+  try{
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
-      body = raw ? JSON.parse(raw) : {};
-    }
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) return json(res, 500, { error: "Missing OPENAI_API_KEY" });
 
-    const { frontDataUrl, backDataUrl, strict } = body || {};
+    const { frontDataUrl, backDataUrl, strict } = await readBody(req);
+    if (!frontDataUrl || !backDataUrl) return json(res, 400, { error: "Missing frontDataUrl/backDataUrl" });
 
-    if (!frontDataUrl || !backDataUrl) {
-      return fail(400, "Missing images", "Provide frontDataUrl and backDataUrl (data URLs).");
-    }
+    const system = `You are a strict trading card pre-screening assistant.
+You must return ONLY valid JSON. You are NOT issuing an official grade.
+Produce a realistic grade distribution and issues list based on image evidence.`;
 
-    // Basic sanity check on data URLs
-    if (typeof frontDataUrl !== "string" || typeof backDataUrl !== "string") {
-      return fail(400, "Invalid payload", "frontDataUrl/backDataUrl must be strings.");
-    }
-    if (!frontDataUrl.startsWith("data:image/") || !backDataUrl.startsWith("data:image/")) {
-      return fail(400, "Invalid image format", "Images must be data URLs like data:image/jpeg;base64,....");
-    }
+    const userText =
+`Analyze the FRONT and BACK images of a trading card.
+Return JSON with:
+{
+  "mostLikely": number,               // 1..10, round to nearest 0.5
+  "range": [number, number],          // likely range, e.g. [8.5, 9.5]
+  "confidence": number,               // 0..1
+  "label": string,                    // e.g. "Likely 9", "Borderline 10"
+  "distribution": [                   // grade distribution (sum ~1)
+    {"grade": 8.5, "prob": 0.2}, {"grade": 9.0, "prob": 0.5}, {"grade": 9.5, "prob": 0.25}, {"grade": 10.0, "prob": 0.05}
+  ],
+  "subgrades": {"centering": number, "corners": number, "edges": number, "surface": number},
+  "issues": string[],
+  "notes": string[]
+}
 
-    if (!process.env.OPENAI_API_KEY) {
-      return fail(500, "OPENAI_API_KEY is not set", "Add it in Vercel → Settings → Environment Variables and redeploy.");
-    }
+Rules:
+- Use grades in increments of 0.5.
+- If strict=true, be harsher on surface flaws and whitening.
+- Do not claim certainty; use confidence + range.
+- Keep issues factual (glare, whitening, centering off, scratches, print lines).`;
 
-    // Model: if your account doesn’t have access to a specific model, OpenAI will return a clear error.
-    const model = "gpt-4.1-mini";
-
-    const schema = {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        overall: { type: "number", minimum: 1, maximum: 10 },
-        label: { type: "string" },
-        confidence: { type: "number", minimum: 0, maximum: 1 },
-        subgrades: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            centering: { type: "number", minimum: 1, maximum: 10 },
-            corners: { type: "number", minimum: 1, maximum: 10 },
-            edges: { type: "number", minimum: 1, maximum: 10 },
-            surface: { type: "number", minimum: 1, maximum: 10 }
-          },
-          required: ["centering", "corners", "edges", "surface"]
-        },
-        notes: { type: "array", items: { type: "string" }, maxItems: 10 },
-        issues: { type: "array", items: { type: "string" }, maxItems: 12 }
-      },
-      required: ["overall", "label", "confidence", "subgrades", "notes", "issues"]
-    };
-
-    const instruction = `
-You are grd.'s grading assistant. Evaluate a trading card from TWO images (front and back).
-
-Return:
-- overall grade 1.0–10.0
-- subgrades: centering/corners/edges/surface 1.0–10.0
-- label (Gem Mint / Mint / Near Mint / Excellent / Good)
-- confidence 0.0–1.0
-- notes: short, user-friendly guidance
-- issues: specific observed issues
-
-Be conservative: if glare/blur/cropping prevents inspection, lower confidence and mention it.
-If strict=true, grade slightly harsher.
-`.trim();
-
-    const payload = {
-      model,
-      store: false,
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: instruction },
-            { type: "input_text", text: `strict=${!!strict}` },
-            { type: "input_text", text: "FRONT" },
-            { type: "input_image", image_url: frontDataUrl, detail: "high" },
-            { type: "input_text", text: "BACK" },
-            { type: "input_image", image_url: backDataUrl, detail: "high" }
-          ]
-        }
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "card_grade",
-          strict: true,
-          schema
-        }
-      }
-    };
-
-    const r = await fetch("https://api.openai.com/v1/responses", {
+    const resp = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${key}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        model: "gpt-4.1-mini",
+        input: [
+          { role:"system", content: system },
+          {
+            role:"user",
+            content: [
+              { type:"text", text: userText + `\n\nstrict=${!!strict}` },
+              { type:"image_url", image_url: { url: frontDataUrl } },
+              { type:"image_url", image_url: { url: backDataUrl } }
+            ]
+          }
+        ],
+        temperature: 0.25,
+        max_output_tokens: 800
+      })
     });
 
-    const rawText = await r.text();
-
-    if (!r.ok) {
-      // Return OpenAI error payload to client for debugging
-      return fail(500, "OpenAI request failed", rawText.slice(0, 2000));
+    const data = await resp.json().catch(()=> ({}));
+    if (!resp.ok){
+      return json(res, 500, { error: data?.error?.message || "OpenAI grade failed" });
     }
 
-    const data = JSON.parse(rawText);
+    const out = (data.output || []).flatMap(o => o.content || []);
+    const text = out.map(c => c.text).filter(Boolean).join("\n").trim();
 
-    // Extract the model output text safely
-    let out = data.output_text;
-
-    if (!out && Array.isArray(data.output)) {
-      const texts = [];
-      for (const item of data.output) {
-        const content = item && item.content;
-        if (!Array.isArray(content)) continue;
-        for (const c of content) {
-          if (c?.type === "output_text" && typeof c.text === "string") texts.push(c.text);
-          if (c?.type === "output_json" && typeof c.json === "object") {
-            // Some responses may include structured JSON directly
-            return res.status(200).json(c.json);
-          }
-        }
-      }
-      out = texts.join("\n");
+    let parsed;
+    try{ parsed = JSON.parse(text); } catch(e){
+      return json(res, 500, { error: "Grade: model did not return valid JSON" });
     }
 
-    if (!out) {
-      return fail(500, "No output from model", JSON.stringify(data).slice(0, 2000));
+    // sanitize
+    parsed.confidence = clamp(Number(parsed.confidence || 0.5), 0, 1);
+    parsed.mostLikely = clamp(Number(parsed.mostLikely || 9), 1, 10);
+    if (!Array.isArray(parsed.range) || parsed.range.length !== 2){
+      parsed.range = [Math.max(1, parsed.mostLikely - 0.5), Math.min(10, parsed.mostLikely + 0.5)];
     }
+    parsed.range = [clamp(Number(parsed.range[0]||parsed.mostLikely-0.5),1,10), clamp(Number(parsed.range[1]||parsed.mostLikely+0.5),1,10)]
+      .sort((a,b)=>a-b);
 
-    let json;
-    try {
-      json = JSON.parse(out);
-    } catch (e) {
-      return fail(500, "Failed to parse model JSON", out.slice(0, 2000));
+    // normalize distribution
+    if (!Array.isArray(parsed.distribution) || !parsed.distribution.length){
+      parsed.distribution = [
+        {grade: Math.max(1, parsed.mostLikely-0.5), prob: 0.25},
+        {grade: parsed.mostLikely, prob: 0.5},
+        {grade: Math.min(10, parsed.mostLikely+0.5), prob: 0.25}
+      ];
     }
+    let sum = parsed.distribution.reduce((s,x)=> s + Number(x.prob||0), 0);
+    if (sum <= 0) sum = 1;
+    parsed.distribution = parsed.distribution.map(x=>({
+      grade: clamp(Number(x.grade||parsed.mostLikely), 1, 10),
+      prob: Number(x.prob||0)/sum
+    }));
 
-    return res.status(200).json(json);
-  } catch (e) {
-    return fail(500, "Server error", String(e));
+    return json(res, 200, parsed);
+
+  } catch (e){
+    console.error(e);
+    return json(res, 500, { error: e.message || "Grade failed" });
   }
-};
+}
