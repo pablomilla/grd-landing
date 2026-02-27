@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#ffffff" />
   <title>grd. — AI Grade (Front + Back)</title>
-  <meta name="description" content="Upload front and back photos for an instant AI grading estimate." />
+  <meta name="description" content="Upload or capture front and back photos for an instant AI grading estimate." />
 
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -183,6 +183,15 @@
       backdrop-filter: blur(14px) saturate(1.2);
       -webkit-backdrop-filter: blur(14px) saturate(1.2);
     }
+    .btn.soft{
+      background: rgba(255,255,255,.60);
+      color: var(--fg);
+      border:1px solid rgba(11,15,20,.10);
+      box-shadow:none;
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    }
+
     input[type="file"]{display:none;}
     .hint{
       color:var(--muted);
@@ -190,6 +199,7 @@
       line-height:1.45;
     }
     .hint b{color:var(--fg)}
+
     .toggles{
       display:flex;
       gap:10px;
@@ -270,7 +280,8 @@
       position:relative;
     }
     .cap b{color:var(--fg); font-weight:760}
-    .cap .mini{opacity:.9}
+    .cap .mini{opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 240px;}
+    .cap .actions{display:flex; gap:8px; flex-wrap:wrap;}
 
     .status{
       display:flex;
@@ -384,11 +395,12 @@
       color: var(--fg);
       font-size: 12px;
       transition: opacity .2s ease, transform .2s ease;
-      max-width: min(720px, calc(100% - 24px));
+      max-width: min(780px, calc(100% - 24px));
       display:flex;
       gap:10px;
       align-items:center;
       justify-content:center;
+      text-align:center;
     }
     .toast.show{opacity:1; transform: translateX(-50%) translateY(0);}
     .toast .tDot{
@@ -397,9 +409,246 @@
       flex:0 0 auto;
     }
 
+    /* --- Camera modal --- */
+    .modal{
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 1000;
+    }
+    .modal.show{ display:flex; }
+
+    .modalBg{
+      position:absolute;
+      inset:0;
+      background: rgba(11,15,20,.38);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .modalCard{
+      position:relative;
+      width:min(980px, 100%);
+      border-radius: 26px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.60);
+      backdrop-filter: blur(22px) saturate(1.25);
+      -webkit-backdrop-filter: blur(22px) saturate(1.25);
+      box-shadow: 0 30px 90px rgba(0,0,0,.25);
+      overflow:hidden;
+      transform: translateY(8px);
+      opacity: 0;
+      animation: camIn .28s cubic-bezier(.2,.8,.2,1) forwards;
+    }
+    @keyframes camIn{
+      to{ transform: translateY(0); opacity: 1; }
+    }
+    .modalCard::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(700px 320px at 15% 10%, rgba(255,255,255,.58), transparent 62%),
+        radial-gradient(520px 260px at 85% 18%, rgba(255,255,255,.34), transparent 62%),
+        linear-gradient(180deg, rgba(255,255,255,.22), transparent 35%, rgba(255,255,255,.10));
+      pointer-events:none;
+      opacity:.75;
+      mix-blend-mode: screen;
+    }
+    .modalCard::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
+      pointer-events:none;
+      opacity:.9;
+    }
+
+    .modalInner{ position:relative; padding: 18px; }
+    .modalTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 12px;
+    }
+    .modalTitle{
+      font-weight: 820;
+      letter-spacing:-0.03em;
+      margin:0;
+    }
+    .modalSub{
+      margin:6px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .meter{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:8px;
+      min-width: 220px;
+    }
+    .meterPill{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      padding:8px 10px;
+      background: rgba(255,255,255,.62);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      font-size:12px;
+      color: var(--muted);
+      max-width: 320px;
+      text-align:right;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .meterBar{
+      width: 220px;
+      height: 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.55);
+      overflow:hidden;
+    }
+    .meterFill{
+      height:100%;
+      width: 40%;
+      border-radius:999px;
+      background: rgba(11,15,20,.78);
+      transform-origin: left center;
+      transition: width .18s ease;
+      opacity:.9;
+    }
+
+    .camStage{
+      border-radius: 22px;
+      border:1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.52);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      overflow:hidden;
+      box-shadow: var(--shadow2);
+      position:relative;
+    }
+    .camVideo{
+      width:100%;
+      display:block;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      background: rgba(11,15,20,.06);
+    }
+
+    .frameGuide{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
+    .frameGuide::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(900px 420px at 50% 10%, rgba(255,255,255,.16), transparent 50%),
+        radial-gradient(700px 380px at 50% 90%, rgba(11,15,20,.10), transparent 55%);
+      opacity:.85;
+    }
+
+    /* Auto-crop box */
+    .cropBox{
+      position:absolute;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.70);
+      box-shadow: 0 0 0 1px rgba(11,15,20,.10) inset;
+      pointer-events:none;
+      opacity:.95;
+      transition: all .12s ease;
+    }
+    .cropLabel{
+      position:absolute;
+      left: 14px;
+      bottom: 14px;
+      border-radius:999px;
+      border:1px solid rgba(11,15,20,.10);
+      background: rgba(255,255,255,.62);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      padding: 8px 10px;
+      font-size:12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width: calc(100% - 28px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .cropLabel b{color: var(--fg); font-weight:780;}
+
+    .camBar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      margin-top: 12px;
+    }
+    .seg{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .kbdHint{
+      font-size:12px;
+      color: var(--muted);
+    }
+
+    /* Burst */
+    .burst{
+      position:absolute;
+      inset:0;
+      background: #fff;
+      opacity:0;
+      pointer-events:none;
+    }
+    .burst.play{
+      animation: burst .22s ease-out;
+    }
+    @keyframes burst{
+      0%{opacity:0}
+      18%{opacity:.65}
+      100%{opacity:0}
+    }
+
+    /* Retake chips */
+    .chip{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius: 999px;
+      padding:8px 10px;
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      font-size:12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .chip b{color:var(--fg); font-weight:780}
+
     @media (prefers-reduced-motion: reduce){
       *{animation:none !important; transition:none !important;}
       .panel{opacity:1; transform:none;}
+      .modalCard{opacity:1; transform:none;}
       body{background: var(--bg);}
     }
   </style>
@@ -419,33 +668,47 @@
           <div class="inner">
             <h1>Grade from front + back.</h1>
             <p class="sub">
-              Upload clear photos of both sides. This page sends images to <b>/api/grade</b> on Vercel and returns a structured grading estimate.
+              Upload or capture clear photos of both sides. This page sends images to <b>/api/grade</b> on Vercel and returns a structured grading estimate.
               Best results: bright light, minimal glare, card fills frame.
             </p>
 
             <div class="upload" id="drop">
               <div class="row">
                 <div>
-                  <div style="font-weight:760; letter-spacing:-0.02em;">Upload both sides</div>
-                  <div class="hint">Drop 2 images at once (front + back), or upload separately.</div>
+                  <div style="font-weight:760; letter-spacing:-0.02em;">Upload / capture both sides</div>
+                  <div class="hint">Drop 2 images at once (front + back), upload separately, or use <b>Live camera</b>.</div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <!-- camera-compatible file inputs (still works on desktop) -->
                   <label class="btn" for="frontFile">Front</label>
                   <label class="btn secondary" for="backFile">Back</label>
+                  <button class="btn secondary" id="cameraBtn" type="button">Live camera</button>
                   <button class="btn secondary" id="demoBtn" type="button">Use demo images</button>
                 </div>
               </div>
 
-              <div class="toggles" aria-label="Options">
-                <label class="toggle"><input type="checkbox" id="highStrict" /> <span>Strict</span> (tougher grading)</label>
-                <label class="toggle"><input type="checkbox" id="fastMode" checked /> <span>Fast</span> (smaller uploads)</label>
+              <!-- MODE: one or the other (radio) -->
+              <div class="toggles" aria-label="Mode">
+                <label class="toggle">
+                  <input type="radio" name="mode" id="modeFast" checked />
+                  <span>Fast</span> (smaller uploads)
+                </label>
+                <label class="toggle">
+                  <input type="radio" name="mode" id="modeStrict" />
+                  <span>Strict</span> (tougher grading)
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" id="autoCrop" checked />
+                  <span>Auto-crop</span> (camera)
+                </label>
               </div>
 
-              <input id="frontFile" type="file" accept="image/*" />
-              <input id="backFile" type="file" accept="image/*" />
+              <input id="frontFile" type="file" accept="image/*" capture="environment" />
+              <input id="backFile" type="file" accept="image/*" capture="environment" />
 
               <div class="hint">
-                <b>Fast</b> compresses images before upload (recommended). If you want maximum detail, uncheck Fast.
+                <b>Fast</b> compresses images before upload. <b>Strict</b> grades a little harsher and uses higher detail uploads.
+                <b>Auto-crop</b> tries to detect the card in live camera captures.
               </div>
             </div>
 
@@ -454,7 +717,10 @@
                 <img class="img" id="frontImg" alt="Front card preview" />
                 <div class="cap">
                   <div><b>Front</b> <span class="mini" id="frontMeta">—</span></div>
-                  <button class="btn secondary" id="clearFront" type="button" style="padding:10px 12px; border-radius:12px;">Clear</button>
+                  <div class="actions">
+                    <button class="btn soft" id="retakeFront" type="button" style="padding:10px 12px; border-radius:12px;">Retake</button>
+                    <button class="btn secondary" id="clearFront" type="button" style="padding:10px 12px; border-radius:12px;">Clear</button>
+                  </div>
                 </div>
               </div>
 
@@ -462,7 +728,10 @@
                 <img class="img" id="backImg" alt="Back card preview" />
                 <div class="cap">
                   <div><b>Back</b> <span class="mini" id="backMeta">—</span></div>
-                  <button class="btn secondary" id="clearBack" type="button" style="padding:10px 12px; border-radius:12px;">Clear</button>
+                  <div class="actions">
+                    <button class="btn soft" id="retakeBack" type="button" style="padding:10px 12px; border-radius:12px;">Retake</button>
+                    <button class="btn secondary" id="clearBack" type="button" style="padding:10px 12px; border-radius:12px;">Clear</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -470,7 +739,7 @@
             <div class="row" style="margin-top:12px;">
               <div class="status" id="status">
                 <span class="dot"></span>
-                <span>Upload front + back to begin.</span>
+                <span>Upload/capture front + back to begin.</span>
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="btn secondary" id="clearBtn" type="button">Clear all</button>
@@ -531,13 +800,65 @@
     </div>
   </div>
 
+  <!-- Live camera modal -->
+  <div class="modal" id="camModal" aria-hidden="true">
+    <div class="modalBg" id="camBg"></div>
+
+    <div class="modalCard" role="dialog" aria-modal="true" aria-label="Live camera">
+      <div class="modalInner">
+        <div class="modalTop">
+          <div>
+            <h3 class="modalTitle">Live camera</h3>
+            <p class="modalSub">Center the card. Snap Front, flip, Snap Back. Use Retake anytime.</p>
+          </div>
+
+          <div class="meter" aria-label="Capture meter">
+            <div class="meterPill" id="meterText">Meter: ready</div>
+            <div class="meterBar" aria-hidden="true">
+              <div class="meterFill" id="meterFill"></div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+              <span class="chip" id="chipFront"><b>Front</b>: —</span>
+              <span class="chip" id="chipBack"><b>Back</b>: —</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="camStage">
+          <video class="camVideo" id="camVideo" playsinline muted autoplay></video>
+          <div class="frameGuide" aria-hidden="true"></div>
+          <div class="cropBox" id="cropBox" style="left:10%;top:10%;width:80%;height:80%;"></div>
+          <div class="cropLabel" id="cropLabel"><b>Auto-crop</b> framing…</div>
+          <div class="burst" id="burst"></div>
+        </div>
+
+        <div class="camBar">
+          <div class="seg">
+            <button class="btn secondary" id="camSwitch" type="button">Switch camera</button>
+            <button class="btn secondary" id="camClose" type="button">Close</button>
+            <span class="kbdHint" id="camHint">Tip: tilt slightly to remove glare.</span>
+          </div>
+
+          <div class="seg">
+            <button class="btn soft" id="snapFront" type="button">Snap Front</button>
+            <button class="btn" id="snapBack" type="button">Snap Back</button>
+          </div>
+        </div>
+
+        <!-- hidden capture canvases -->
+        <canvas id="camCanvas" style="display:none;"></canvas>
+        <canvas id="camWork" style="display:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite">
     <span class="tDot" aria-hidden="true"></span>
     <span id="toastMsg">…</span>
   </div>
 
   <script>
-    // --- Ambient pointer light like the rest of the site ---
+    // Ambient pointer light
     function setVars(x, y){
       const w = window.innerWidth, h = window.innerHeight;
       const mx = Math.max(0, Math.min(100, (x / w) * 100));
@@ -547,7 +868,7 @@
     }
     window.addEventListener('pointermove', (e) => setVars(e.clientX, e.clientY), {passive:true});
 
-    // --- Footer time ---
+    // Footer time
     const yearEl = document.getElementById('year');
     const timeEl = document.getElementById('time');
     yearEl.textContent = new Date().getFullYear();
@@ -563,7 +884,7 @@
     updateTime();
     setInterval(updateTime, 10000);
 
-    // --- UI refs ---
+    // UI refs
     const drop = document.getElementById('drop');
     const frontFileInput = document.getElementById('frontFile');
     const backFileInput = document.getElementById('backFile');
@@ -578,11 +899,15 @@
     const clearBtn = document.getElementById('clearBtn');
     const clearFrontBtn = document.getElementById('clearFront');
     const clearBackBtn = document.getElementById('clearBack');
+    const retakeFrontBtn = document.getElementById('retakeFront');
+    const retakeBackBtn = document.getElementById('retakeBack');
     const demoBtn = document.getElementById('demoBtn');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    const strict = document.getElementById('highStrict');
-    const fast = document.getElementById('fastMode');
+    // Mode radios (mutually exclusive) + auto-crop toggle
+    const modeFast = document.getElementById('modeFast');
+    const modeStrict = document.getElementById('modeStrict');
+    const autoCropToggle = document.getElementById('autoCrop');
 
     const gradeEl = document.getElementById('grade');
     const centEl = document.getElementById('cent');
@@ -594,18 +919,43 @@
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
 
-    // Keep original canvas (we use it for compression)
+    // Canvas used for compression
     const cv = document.getElementById('cv');
+
+    // Camera modal refs
+    const cameraBtn = document.getElementById('cameraBtn');
+    const camModal = document.getElementById('camModal');
+    const camBg = document.getElementById('camBg');
+    const camClose = document.getElementById('camClose');
+    const camVideo = document.getElementById('camVideo');
+    const camSwitch = document.getElementById('camSwitch');
+    const snapFront = document.getElementById('snapFront');
+    const snapBack = document.getElementById('snapBack');
+
+    const camCanvas = document.getElementById('camCanvas');
+    const camWork = document.getElementById('camWork');
+
+    const cropBoxEl = document.getElementById('cropBox');
+    const cropLabelEl = document.getElementById('cropLabel');
+    const burstEl = document.getElementById('burst');
+
+    const meterText = document.getElementById('meterText');
+    const meterFill = document.getElementById('meterFill');
+    const chipFront = document.getElementById('chipFront');
+    const chipBack = document.getElementById('chipBack');
 
     let frontFileObj = null;
     let backFileObj = null;
     let lastReport = null;
 
+    function isFastMode(){ return !!modeFast.checked; }
+    function isStrictMode(){ return !!modeStrict.checked; }
+
     function toastShow(msg){
       toastMsg.textContent = msg;
       toast.classList.add('show');
       clearTimeout(toast._t);
-      toast._t = setTimeout(()=>toast.classList.remove('show'), 2200);
+      toast._t = setTimeout(()=>toast.classList.remove('show'), 2400);
     }
 
     function setStatus(text){
@@ -620,7 +970,7 @@
       gradeBtn.disabled = !canGrade();
       if (canGrade()) setStatus("Ready. Click “Run AI Grade”.");
       else if (frontFileObj || backFileObj) setStatus("Add the missing side to enable grading.");
-      else setStatus("Upload front + back to begin.");
+      else setStatus("Upload/capture front + back to begin.");
     }
 
     function resetResults(){
@@ -652,7 +1002,6 @@
           li.textContent = n;
           notesEl.appendChild(li);
         });
-        // Show a few issues after notes (keeps UI tidy)
         issues.slice(0, 6).forEach(i=>{
           const li = document.createElement('li');
           li.textContent = `Issue: ${i}`;
@@ -664,8 +1013,9 @@
       lastReport = {
         ...data,
         inputs: {
-          strict: !!strict.checked,
-          fast: !!fast.checked
+          strict: isStrictMode(),
+          fast: isFastMode(),
+          autoCrop: !!autoCropToggle.checked
         },
         createdAt: new Date().toISOString()
       };
@@ -687,8 +1037,7 @@
 
     // --- Image compression to keep uploads small/reliable on Vercel ---
     // Returns data:image/jpeg;base64,...
-    async function fileToDataUrlCompressed(file, maxDim = 1100, quality = 0.86) {
-      // Use File -> Image -> Canvas -> JPEG data URL
+    async function fileToDataUrlCompressed(file) {
       const blobUrl = URL.createObjectURL(file);
       const img = new Image();
       img.decoding = "async";
@@ -701,9 +1050,9 @@
       });
       URL.revokeObjectURL(blobUrl);
 
-      // Fast mode uses smaller max dimension + slightly more compression
-      const max = fast.checked ? 1100 : 1600;
-      const q = fast.checked ? 0.84 : 0.92;
+      const fastMode = isFastMode();
+      const max = fastMode ? 1100 : 1600;
+      const q = fastMode ? 0.84 : 0.92;
 
       const scale = Math.min(1, max / Math.max(img.width, img.height));
       const w = Math.max(1, Math.round(img.width * scale));
@@ -715,11 +1064,10 @@
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
 
-      // JPEG is usually much smaller than PNG for photos
       return cv.toDataURL("image/jpeg", q);
     }
 
-    // --- Wire inputs ---
+    // --- Inputs ---
     function setFrontFile(f){
       if (!f || !f.type?.startsWith("image/")){
         toastShow("Front: please choose an image.");
@@ -727,9 +1075,10 @@
       }
       frontFileObj = f;
       setPreviewFromFile(frontImg, f, frontMeta);
+      chipFront.innerHTML = `<b>Front</b>: ✓`;
       resetResults();
       updateGradeBtn();
-      toastShow("Front loaded.");
+      toastShow("Front ready.");
     }
 
     function setBackFile(f){
@@ -739,9 +1088,10 @@
       }
       backFileObj = f;
       setPreviewFromFile(backImg, f, backMeta);
+      chipBack.innerHTML = `<b>Back</b>: ✓`;
       resetResults();
       updateGradeBtn();
-      toastShow("Back loaded.");
+      toastShow("Back ready.");
     }
 
     frontFileInput.addEventListener("change", (e)=> setFrontFile(e.target.files?.[0]));
@@ -752,6 +1102,7 @@
       frontFileInput.value = "";
       frontImg.removeAttribute("src");
       frontMeta.textContent = "—";
+      chipFront.innerHTML = `<b>Front</b>: —`;
       resetResults();
       updateGradeBtn();
     }
@@ -760,6 +1111,7 @@
       backFileInput.value = "";
       backImg.removeAttribute("src");
       backMeta.textContent = "—";
+      chipBack.innerHTML = `<b>Back</b>: —`;
       resetResults();
       updateGradeBtn();
     }
@@ -791,13 +1143,11 @@
         toastShow("Drop image files only.");
         return;
       }
-
       if (files.length >= 2){
         setFrontFile(files[0]);
         setBackFile(files[1]);
         toastShow("Front + back loaded.");
       } else {
-        // Fill missing slot
         if (!frontFileObj) setFrontFile(files[0]);
         else if (!backFileObj) setBackFile(files[0]);
         else toastShow("Both sides already set. Clear one to replace.");
@@ -805,7 +1155,14 @@
       updateGradeBtn();
     });
 
-    // Demo images (simple generated SVGs; good for flow testing)
+    // Mode changes: reset results (keeps expectations correct)
+    [modeFast, modeStrict].forEach(el => el.addEventListener('change', () => {
+      resetResults();
+      updateGradeBtn();
+      toastShow(isFastMode() ? "Mode: Fast" : "Mode: Strict");
+    }));
+
+    // Demo images
     demoBtn.addEventListener('click', ()=>{
       const mk = (title, sub) => `
       <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
@@ -833,7 +1190,6 @@
       const frontData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(mk('grd.', 'demo FRONT'));
       const backData  = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(mk('grd.', 'demo BACK'));
 
-      // Convert data URLs to File objects so the compression + upload flow matches real usage.
       async function dataUrlToFile(dataUrl, name){
         const r = await fetch(dataUrl);
         const b = await r.blob();
@@ -848,12 +1204,11 @@
         setBackFile(f2);
         toastShow("Demo images loaded.");
       }).catch(()=>{
-        // Fallback: set previews only
         frontImg.src = frontData;
         backImg.src = backData;
         frontMeta.textContent = "demo-front.svg";
         backMeta.textContent = "demo-back.svg";
-        toastShow("Demo previews loaded (upload disabled).");
+        toastShow("Demo previews loaded.");
       });
     });
 
@@ -880,7 +1235,7 @@
           body: JSON.stringify({
             frontDataUrl,
             backDataUrl,
-            strict: !!strict.checked
+            strict: isStrictMode()
           })
         });
 
@@ -892,7 +1247,9 @@
 
         setResultsFromAI(data);
 
-        const conf = typeof data.confidence === "number" ? ` (confidence ${(data.confidence*100).toFixed(0)}%)` : "";
+        const conf = typeof data.confidence === "number"
+          ? ` (confidence ${(data.confidence*100).toFixed(0)}%)`
+          : "";
         setStatus("Done." + conf);
         toastShow("Grade complete.");
       }catch(e){
@@ -900,7 +1257,6 @@
         toastShow("AI grading failed. Check /api/grade + OPENAI_API_KEY.");
         setStatus("Error. Try again with clearer photos.");
       }finally{
-        // Re-enable if inputs still exist
         updateGradeBtn();
       }
     });
@@ -918,9 +1274,378 @@
       toastShow("Report downloaded.");
     });
 
+    // =========================
+    // Live Camera Mode + Meter + Burst + Auto-crop + Retake
+    // =========================
+    let camStream = null;
+    let camFacing = "environment";
+    let camStarting = false;
+    let meterRAF = null;
+
+    // state for retake flow
+    let targetSide = "front"; // what "Snap" focuses on when opened via retake
+    let haveFront = false;
+    let haveBack = false;
+
+    // crop state (normalized 0..1 relative to video frame)
+    let cropNorm = { x: 0.10, y: 0.10, w: 0.80, h: 0.80, ok: false };
+    let cropNormSmoothed = { ...cropNorm };
+
+    function showCamModal(){
+      camModal.classList.add('show');
+      camModal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = "hidden";
+      syncChips();
+    }
+    function hideCamModal(){
+      camModal.classList.remove('show');
+      camModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = "";
+      stopCamera();
+    }
+
+    function syncChips(){
+      haveFront = !!frontFileObj;
+      haveBack = !!backFileObj;
+      chipFront.innerHTML = haveFront ? `<b>Front</b>: ✓` : `<b>Front</b>: —`;
+      chipBack.innerHTML = haveBack ? `<b>Back</b>: ✓` : `<b>Back</b>: —`;
+      snapFront.textContent = haveFront ? "Retake Front" : "Snap Front";
+      snapBack.textContent = haveBack ? "Retake Back" : "Snap Back";
+    }
+
+    function playBurst(){
+      burstEl.classList.remove('play');
+      // force reflow
+      void burstEl.offsetWidth;
+      burstEl.classList.add('play');
+    }
+
+    async function startCamera(openTarget = "front"){
+      if (camStarting) return;
+      camStarting = true;
+      targetSide = openTarget;
+
+      try{
+        stopCamera();
+        showCamModal();
+
+        const constraints = {
+          audio: false,
+          video: {
+            facingMode: { ideal: camFacing },
+            width: { ideal: 1280 },
+            height: { ideal: 960 }
+          }
+        };
+
+        camStream = await navigator.mediaDevices.getUserMedia(constraints);
+        camVideo.srcObject = camStream;
+
+        await camVideo.play().catch(()=>{});
+        toastShow("Camera ready.");
+        meterLoopStart();
+      } catch (e){
+        console.error(e);
+        toastShow("Camera permission denied or unavailable.");
+        hideCamModal();
+      } finally {
+        camStarting = false;
+      }
+    }
+
+    function stopCamera(){
+      meterLoopStop();
+      if (!camStream) return;
+      try{ camStream.getTracks().forEach(t => t.stop()); }catch(_){}
+      camStream = null;
+      camVideo.srcObject = null;
+    }
+
+    async function switchCamera(){
+      camFacing = (camFacing === "environment") ? "user" : "environment";
+      toastShow(camFacing === "environment" ? "Rear camera" : "Front camera");
+      await startCamera(targetSide);
+    }
+
+    // ----- Meter + Auto-crop detection -----
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+    function meterLoopStart(){
+      meterLoopStop();
+      const loop = () => {
+        if (!camModal.classList.contains('show') || !camVideo.videoWidth) return;
+        analyzeFrame();
+        meterRAF = requestAnimationFrame(loop);
+      };
+      meterRAF = requestAnimationFrame(loop);
+    }
+    function meterLoopStop(){
+      if (meterRAF) cancelAnimationFrame(meterRAF);
+      meterRAF = null;
+    }
+
+    // Quick frame analysis:
+    // - darkness (mean luminance)
+    // - glare (pct of pixels near white)
+    // - blur proxy (variance of Laplacian-ish)
+    // - auto-crop bounding box of strong edges
+    function analyzeFrame(){
+      const vw = camVideo.videoWidth;
+      const vh = camVideo.videoHeight;
+      if (!vw || !vh) return;
+
+      // downscale for speed
+      const targetW = 320;
+      const scale = targetW / vw;
+      const w = Math.max(1, Math.round(vw * scale));
+      const h = Math.max(1, Math.round(vh * scale));
+
+      camWork.width = w;
+      camWork.height = h;
+      const ctx = camWork.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(camVideo, 0, 0, w, h);
+      const img = ctx.getImageData(0, 0, w, h);
+      const d = img.data;
+
+      let sumL = 0;
+      let glare = 0;
+
+      // We'll also compute a rough edge map via Sobel on luminance for crop bbox + focus
+      // L buffer
+      const L = new Float32Array(w * h);
+
+      for (let i = 0, p = 0; i < d.length; i += 4, p++){
+        const r = d[i], g = d[i+1], b = d[i+2];
+        const lum = 0.2126*r + 0.7152*g + 0.0722*b;
+        L[p] = lum;
+        sumL += lum;
+        if (lum > 245) glare++;
+      }
+
+      const n = w * h;
+      const mean = sumL / n;
+      const glarePct = glare / n;
+
+      // Sobel + focus + edge bbox
+      // We'll threshold gradient magnitude to find "card-ish" boundary region.
+      let edgeCount = 0;
+      let minX = w, minY = h, maxX = 0, maxY = 0;
+
+      // Focus metric: average gradient magnitude (not perfect, but good enough for "too blurry")
+      let gradSum = 0;
+
+      // Only look in the middle to avoid background edges dominating
+      const x0 = Math.round(w * 0.08), x1 = Math.round(w * 0.92);
+      const y0 = Math.round(h * 0.08), y1 = Math.round(h * 0.92);
+
+      for (let y = y0 + 1; y < y1 - 1; y++){
+        for (let x = x0 + 1; x < x1 - 1; x++){
+          const i = y*w + x;
+
+          const gx =
+            -L[i-w-1] - 2*L[i-1] - L[i+w-1] +
+             L[i-w+1] + 2*L[i+1] + L[i+w+1];
+
+          const gy =
+            -L[i-w-1] - 2*L[i-w] - L[i-w+1] +
+             L[i+w-1] + 2*L[i+w] + L[i+w+1];
+
+          const gmag = Math.abs(gx) + Math.abs(gy);
+          gradSum += gmag;
+
+          // adaptive-ish threshold: depends on contrast
+          // (cards usually produce a strong boundary; this catches it without being too noisy)
+          const thr = 240; // tuned for 0..255 luminance scale after Sobel sums
+          if (gmag > thr){
+            edgeCount++;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      const gradAvg = gradSum / Math.max(1, (x1-x0)*(y1-y0));
+      // normalize to 0..1-ish for meter bar
+      const focusScore = clamp((gradAvg - 80) / 260, 0, 1);
+
+      // meter message priorities
+      let msg = "Meter: good";
+      let level = 0.78;
+
+      if (mean < 60){
+        msg = "Too dark — add light";
+        level = 0.22;
+      } else if (glarePct > 0.020){
+        msg = "Too much glare — tilt slightly";
+        level = 0.30;
+      } else if (focusScore < 0.28){
+        msg = "Too blurry — hold steady";
+        level = 0.35;
+      } else {
+        // good
+        msg = "Meter: good";
+        level = 0.65 + focusScore*0.35;
+      }
+
+      meterText.textContent = msg;
+      meterFill.style.width = `${Math.round(level * 100)}%`;
+
+      // auto-crop: bbox from edges
+      if (autoCropToggle.checked && edgeCount > 650){
+        // Expand bbox slightly and validate aspect ratio near card ratio ~0.714 (2.5/3.5)
+        let bx0 = clamp(minX - Math.round(w*0.03), 0, w-1);
+        let by0 = clamp(minY - Math.round(h*0.03), 0, h-1);
+        let bx1 = clamp(maxX + Math.round(w*0.03), 0, w-1);
+        let by1 = clamp(maxY + Math.round(h*0.03), 0, h-1);
+
+        const bw = Math.max(1, bx1 - bx0);
+        const bh = Math.max(1, by1 - by0);
+        const ar = bw / bh;
+
+        const arOk = (ar > 0.55 && ar < 0.92); // loose
+        const sizeOk = (bw > w*0.40 && bh > h*0.40);
+
+        if (arOk && sizeOk){
+          cropNorm.ok = true;
+          cropNorm.x = bx0 / w;
+          cropNorm.y = by0 / h;
+          cropNorm.w = bw / w;
+          cropNorm.h = bh / h;
+
+          // Smooth to reduce jitter
+          const a = 0.18;
+          cropNormSmoothed.x = cropNormSmoothed.x*(1-a) + cropNorm.x*a;
+          cropNormSmoothed.y = cropNormSmoothed.y*(1-a) + cropNorm.y*a;
+          cropNormSmoothed.w = cropNormSmoothed.w*(1-a) + cropNorm.w*a;
+          cropNormSmoothed.h = cropNormSmoothed.h*(1-a) + cropNorm.h*a;
+          cropNormSmoothed.ok = true;
+
+          cropLabelEl.innerHTML = `<b>Auto-crop</b> detected`;
+        } else {
+          cropNorm.ok = false;
+          cropLabelEl.innerHTML = `<b>Auto-crop</b> framing…`;
+        }
+      } else {
+        cropNorm.ok = false;
+        cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Auto-crop</b> framing…` : `<b>Auto-crop</b> off`;
+      }
+
+      // Apply crop box overlay (relative to displayed video element)
+      updateCropOverlay();
+    }
+
+    function updateCropOverlay(){
+      // cropBox is positioned in modal relative to camStage's content box.
+      // We'll set it in percentages for the video area.
+      // Use smoothed rect if valid, else fallback inset 10%.
+      const r = (autoCropToggle.checked && cropNormSmoothed.ok) ? cropNormSmoothed : { x:0.10, y:0.10, w:0.80, h:0.80 };
+
+      cropBoxEl.style.left = `${(r.x*100).toFixed(2)}%`;
+      cropBoxEl.style.top = `${(r.y*100).toFixed(2)}%`;
+      cropBoxEl.style.width = `${(r.w*100).toFixed(2)}%`;
+      cropBoxEl.style.height = `${(r.h*100).toFixed(2)}%`;
+      cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
+    }
+
+    // Capture current frame -> (optional crop) -> File
+    async function snapToFile(name){
+      const vw = camVideo.videoWidth || 1280;
+      const vh = camVideo.videoHeight || 960;
+
+      // Capture full-res frame first
+      camCanvas.width = vw;
+      camCanvas.height = vh;
+      const ctx = camCanvas.getContext("2d");
+      ctx.drawImage(camVideo, 0, 0, vw, vh);
+
+      // Optional crop based on detected norm rect from *downscaled* analysis.
+      // Map cropNormSmoothed to full-res:
+      let outCanvas = camCanvas;
+      if (autoCropToggle.checked && cropNormSmoothed.ok){
+        const x = Math.round(cropNormSmoothed.x * vw);
+        const y = Math.round(cropNormSmoothed.y * vh);
+        const w = Math.round(cropNormSmoothed.w * vw);
+        const h = Math.round(cropNormSmoothed.h * vh);
+
+        // safety clamps
+        const sx = clamp(x, 0, vw-1);
+        const sy = clamp(y, 0, vh-1);
+        const sw = clamp(w, 1, vw - sx);
+        const sh = clamp(h, 1, vh - sy);
+
+        const c = document.createElement("canvas");
+        c.width = sw;
+        c.height = sh;
+        const cctx = c.getContext("2d");
+        cctx.drawImage(camCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+        outCanvas = c;
+      }
+
+      const blob = await new Promise((resolve) => {
+        outCanvas.toBlob((b) => resolve(b), "image/jpeg", 0.92);
+      });
+
+      if (!blob){
+        toastShow("Couldn’t capture frame. Try again.");
+        return null;
+      }
+
+      return new File([blob], name, { type: "image/jpeg" });
+    }
+
+    // Camera controls wiring
+    cameraBtn?.addEventListener('click', () => startCamera("front"));
+    camClose?.addEventListener('click', hideCamModal);
+    camBg?.addEventListener('click', hideCamModal);
+    camSwitch?.addEventListener('click', switchCamera);
+
+    // Instant “retake” flow (main page buttons)
+    retakeFrontBtn?.addEventListener('click', () => startCamera("front"));
+    retakeBackBtn?.addEventListener('click', () => startCamera("back"));
+
+    // Snap/Retake actions inside modal
+    snapFront?.addEventListener('click', async ()=>{
+      playBurst();
+      const f = await snapToFile(`grd-front-${Date.now()}.jpg`);
+      if (f){
+        setFrontFile(f);
+        syncChips();
+        toastShow(frontFileObj ? "Front captured." : "Front ready.");
+      }
+    });
+
+    snapBack?.addEventListener('click', async ()=>{
+      playBurst();
+      const f = await snapToFile(`grd-back-${Date.now()}.jpg`);
+      if (f){
+        setBackFile(f);
+        syncChips();
+        toastShow(backFileObj ? "Back captured." : "Back ready.");
+        if (canGrade()) hideCamModal();
+      }
+    });
+
+    // ESC closes modal
+    window.addEventListener('keydown', (e)=>{
+      if (e.key === "Escape" && camModal.classList.contains('show')){
+        hideCamModal();
+      }
+    });
+
+    // Update crop label immediately on toggle
+    autoCropToggle.addEventListener('change', ()=>{
+      cropNormSmoothed.ok = false;
+      cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Auto-crop</b> framing…` : `<b>Auto-crop</b> off`;
+      updateCropOverlay();
+      toastShow(autoCropToggle.checked ? "Auto-crop on" : "Auto-crop off");
+    });
+
     // Init
     resetResults();
     updateGradeBtn();
+    syncChips();
   </script>
 </body>
 </html>
