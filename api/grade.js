@@ -1,17 +1,19 @@
-// api/grade.js
-// Vercel Serverless Function (Node)
-// Expects JSON: { frontDataUrl: "data:image/..;base64,...", backDataUrl: "data:image/..;base64,...", strict: boolean }
-// Returns JSON: { overall, label, subgrades, notes, confidence, issues }
+// api/grade.js (Vercel Serverless Function - Node)
+// POST JSON: { frontDataUrl, backDataUrl, strict }
+// Returns: grading JSON or { error, detail }
 
 module.exports = async function handler(req, res) {
+  const fail = (code, error, detail) => res.status(code).json({ error, detail });
+
   try {
     if (req.method !== "POST") {
       res.setHeader("Allow", "POST");
-      return res.status(405).json({ error: "Method not allowed" });
+      return fail(405, "Method not allowed", "Use POST with JSON body.");
     }
 
-    // Vercel usually parses JSON automatically, but handle raw body just in case.
+    // Parse body robustly (Vercel may already parse JSON into req.body)
     let body = req.body;
+
     if (!body || typeof body === "string") {
       const raw =
         typeof body === "string"
@@ -22,20 +24,30 @@ module.exports = async function handler(req, res) {
               req.on("end", () => resolve(data));
               req.on("error", reject);
             });
+
       body = raw ? JSON.parse(raw) : {};
     }
 
     const { frontDataUrl, backDataUrl, strict } = body || {};
+
     if (!frontDataUrl || !backDataUrl) {
-      return res.status(400).json({ error: "Missing frontDataUrl or backDataUrl" });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "OPENAI_API_KEY is not set" });
+      return fail(400, "Missing images", "Provide frontDataUrl and backDataUrl (data URLs).");
     }
 
-    // Pick a vision-capable model. This is a safe default from OpenAI examples.
-    // You can swap to a stronger model later.
-    const model = "gpt-4.1-mini"; // vision example model :contentReference[oaicite:2]{index=2}
+    // Basic sanity check on data URLs
+    if (typeof frontDataUrl !== "string" || typeof backDataUrl !== "string") {
+      return fail(400, "Invalid payload", "frontDataUrl/backDataUrl must be strings.");
+    }
+    if (!frontDataUrl.startsWith("data:image/") || !backDataUrl.startsWith("data:image/")) {
+      return fail(400, "Invalid image format", "Images must be data URLs like data:image/jpeg;base64,....");
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return fail(500, "OPENAI_API_KEY is not set", "Add it in Vercel → Settings → Environment Variables and redeploy.");
+    }
+
+    // Model: if your account doesn’t have access to a specific model, OpenAI will return a clear error.
+    const model = "gpt-4.1-mini";
 
     const schema = {
       type: "object",
@@ -55,48 +67,39 @@ module.exports = async function handler(req, res) {
           },
           required: ["centering", "corners", "edges", "surface"]
         },
-        notes: {
-          type: "array",
-          items: { type: "string" },
-          maxItems: 10
-        },
-        issues: {
-          type: "array",
-          items: { type: "string" },
-          maxItems: 12
-        }
+        notes: { type: "array", items: { type: "string" }, maxItems: 10 },
+        issues: { type: "array", items: { type: "string" }, maxItems: 12 }
       },
       required: ["overall", "label", "confidence", "subgrades", "notes", "issues"]
     };
 
-    const prompt = `
+    const instruction = `
 You are grd.'s grading assistant. Evaluate a trading card from TWO images (front and back).
 
-Return a grading estimate with:
-- Overall grade 1.0–10.0 (one decimal is fine)
-- Subgrades (centering, corners, edges, surface) 1.0–10.0
-- A short label (e.g. "Gem Mint", "Mint", "Near Mint", "Excellent", "Good")
+Return:
+- overall grade 1.0–10.0
+- subgrades: centering/corners/edges/surface 1.0–10.0
+- label (Gem Mint / Mint / Near Mint / Excellent / Good)
 - confidence 0.0–1.0
 - notes: short, user-friendly guidance
-- issues: specific observed issues (e.g. "top border thicker", "corner whitening", "surface scratches", "print line", "edge chipping", "glare prevents certainty")
+- issues: specific observed issues
 
 Be conservative: if glare/blur/cropping prevents inspection, lower confidence and mention it.
-
-Strict mode: if strict=true, grade slightly harsher (esp. corners/edges/surface).
+If strict=true, grade slightly harsher.
 `.trim();
 
     const payload = {
       model,
-      store: false, // don’t store responses (recommended for privacy) :contentReference[oaicite:3]{index=3}
+      store: false,
       input: [
         {
           role: "user",
           content: [
-            { type: "input_text", text: prompt },
+            { type: "input_text", text: instruction },
             { type: "input_text", text: `strict=${!!strict}` },
-            { type: "input_text", text: "Image 1: FRONT" },
+            { type: "input_text", text: "FRONT" },
             { type: "input_image", image_url: frontDataUrl, detail: "high" },
-            { type: "input_text", text: "Image 2: BACK" },
+            { type: "input_text", text: "BACK" },
             { type: "input_image", image_url: backDataUrl, detail: "high" }
           ]
         }
@@ -114,34 +117,53 @@ Strict mode: if strict=true, grade slightly harsher (esp. corners/edges/surface)
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
 
+    const rawText = await r.text();
+
     if (!r.ok) {
-      const errText = await r.text();
-      return res.status(500).json({ error: "OpenAI request failed", detail: errText });
+      // Return OpenAI error payload to client for debugging
+      return fail(500, "OpenAI request failed", rawText.slice(0, 2000));
     }
 
-    const data = await r.json();
+    const data = JSON.parse(rawText);
 
-    // Responses API: structured output will be in output_text in SDKs,
-    // but via raw HTTP, we can still parse from `output_text` if present, else search output.
-    const outputText =
-      data.output_text ||
-      (Array.isArray(data.output)
-        ? data.output
-            .flatMap((o) => o.content || [])
-            .filter((c) => c.type === "output_text" && typeof c.text === "string")
-            .map((c) => c.text)
-            .join("\n")
-        : "");
+    // Extract the model output text safely
+    let out = data.output_text;
 
-    const json = JSON.parse(outputText);
+    if (!out && Array.isArray(data.output)) {
+      const texts = [];
+      for (const item of data.output) {
+        const content = item && item.content;
+        if (!Array.isArray(content)) continue;
+        for (const c of content) {
+          if (c?.type === "output_text" && typeof c.text === "string") texts.push(c.text);
+          if (c?.type === "output_json" && typeof c.json === "object") {
+            // Some responses may include structured JSON directly
+            return res.status(200).json(c.json);
+          }
+        }
+      }
+      out = texts.join("\n");
+    }
+
+    if (!out) {
+      return fail(500, "No output from model", JSON.stringify(data).slice(0, 2000));
+    }
+
+    let json;
+    try {
+      json = JSON.parse(out);
+    } catch (e) {
+      return fail(500, "Failed to parse model JSON", out.slice(0, 2000));
+    }
+
     return res.status(200).json(json);
   } catch (e) {
-    return res.status(500).json({ error: "Server error", detail: String(e) });
+    return fail(500, "Server error", String(e));
   }
 };
