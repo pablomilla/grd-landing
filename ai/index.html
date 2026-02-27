@@ -475,6 +475,7 @@
       justify-content:space-between;
       gap:12px;
       margin-bottom: 12px;
+      flex-wrap:wrap;
     }
     .modalTitle{
       font-weight: 820;
@@ -504,7 +505,7 @@
       -webkit-backdrop-filter: blur(14px) saturate(1.2);
       font-size:12px;
       color: var(--muted);
-      max-width: 320px;
+      max-width: 340px;
       text-align:right;
       white-space:nowrap;
       overflow:hidden;
@@ -537,11 +538,13 @@
       overflow:hidden;
       box-shadow: var(--shadow2);
       position:relative;
+      max-height: 72vh;
     }
+    /* ✅ Portrait card-shaped live view */
     .camVideo{
       width:100%;
       display:block;
-      aspect-ratio: 4 / 3;
+      aspect-ratio: 3 / 4;
       object-fit: cover;
       background: rgba(11,15,20,.06);
     }
@@ -561,15 +564,15 @@
       opacity:.85;
     }
 
-    /* Auto-crop box */
+    /* Frame-guided crop box */
     .cropBox{
       position:absolute;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,.70);
-      box-shadow: 0 0 0 1px rgba(11,15,20,.10) inset;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.78);
+      box-shadow: 0 0 0 1px rgba(11,15,20,.12) inset;
       pointer-events:none;
       opacity:.95;
-      transition: all .12s ease;
+      transition: opacity .12s ease;
     }
     .cropLabel{
       position:absolute;
@@ -629,7 +632,7 @@
       100%{opacity:0}
     }
 
-    /* Retake chips */
+    /* Chips */
     .chip{
       border:1px solid rgba(11,15,20,.10);
       border-radius: 999px;
@@ -679,7 +682,6 @@
                   <div class="hint">Drop 2 images at once (front + back), upload separately, or use <b>Live camera</b>.</div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                  <!-- camera-compatible file inputs (still works on desktop) -->
                   <label class="btn" for="frontFile">Front</label>
                   <label class="btn secondary" for="backFile">Back</label>
                   <button class="btn secondary" id="cameraBtn" type="button">Live camera</button>
@@ -687,7 +689,6 @@
                 </div>
               </div>
 
-              <!-- MODE: one or the other (radio) -->
               <div class="toggles" aria-label="Mode">
                 <label class="toggle">
                   <input type="radio" name="mode" id="modeFast" checked />
@@ -699,7 +700,7 @@
                 </label>
                 <label class="toggle">
                   <input type="checkbox" id="autoCrop" checked />
-                  <span>Auto-crop</span> (camera)
+                  <span>Frame crop</span> (camera)
                 </label>
               </div>
 
@@ -708,7 +709,7 @@
 
               <div class="hint">
                 <b>Fast</b> compresses images before upload. <b>Strict</b> grades a little harsher and uses higher detail uploads.
-                <b>Auto-crop</b> tries to detect the card in live camera captures.
+                <b>Frame crop</b> crops exactly to the on-screen guide (recommended).
               </div>
             </div>
 
@@ -809,7 +810,7 @@
         <div class="modalTop">
           <div>
             <h3 class="modalTitle">Live camera</h3>
-            <p class="modalSub">Center the card. Snap Front, flip, Snap Back. Use Retake anytime.</p>
+            <p class="modalSub">Align the card to the guide. Auto snap will capture when quality is good.</p>
           </div>
 
           <div class="meter" aria-label="Capture meter">
@@ -818,6 +819,10 @@
               <div class="meterFill" id="meterFill"></div>
             </div>
             <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+              <label class="chip" style="cursor:pointer;">
+                <input type="checkbox" id="autoSnap" style="accent-color:#0b0f14;">
+                <b>Auto snap</b>
+              </label>
               <span class="chip" id="chipFront"><b>Front</b>: —</span>
               <span class="chip" id="chipBack"><b>Back</b>: —</span>
             </div>
@@ -827,8 +832,11 @@
         <div class="camStage">
           <video class="camVideo" id="camVideo" playsinline muted autoplay></video>
           <div class="frameGuide" aria-hidden="true"></div>
-          <div class="cropBox" id="cropBox" style="left:10%;top:10%;width:80%;height:80%;"></div>
-          <div class="cropLabel" id="cropLabel"><b>Auto-crop</b> framing…</div>
+
+          <!-- ✅ Frame-guided crop box: keep these % in sync with GUIDE rect in JS -->
+          <div class="cropBox" id="cropBox" style="left:8%;top:6%;width:84%;height:88%;"></div>
+
+          <div class="cropLabel" id="cropLabel"><b>Frame crop</b> align card to outline</div>
           <div class="burst" id="burst"></div>
         </div>
 
@@ -904,7 +912,7 @@
     const demoBtn = document.getElementById('demoBtn');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    // Mode radios (mutually exclusive) + auto-crop toggle
+    // Mode radios (mutually exclusive) + crop toggle
     const modeFast = document.getElementById('modeFast');
     const modeStrict = document.getElementById('modeStrict');
     const autoCropToggle = document.getElementById('autoCrop');
@@ -943,6 +951,7 @@
     const meterFill = document.getElementById('meterFill');
     const chipFront = document.getElementById('chipFront');
     const chipBack = document.getElementById('chipBack');
+    const autoSnap = document.getElementById('autoSnap');
 
     let frontFileObj = null;
     let backFileObj = null;
@@ -1036,7 +1045,6 @@
     }
 
     // --- Image compression to keep uploads small/reliable on Vercel ---
-    // Returns data:image/jpeg;base64,...
     async function fileToDataUrlCompressed(file) {
       const blobUrl = URL.createObjectURL(file);
       const img = new Image();
@@ -1155,7 +1163,7 @@
       updateGradeBtn();
     });
 
-    // Mode changes: reset results (keeps expectations correct)
+    // Mode changes: reset results
     [modeFast, modeStrict].forEach(el => el.addEventListener('change', () => {
       resetResults();
       updateGradeBtn();
@@ -1240,12 +1248,12 @@
         });
 
         const data = await resp.json().catch(()=> ({}));
-if (!resp.ok){
-  const msg =
-    [data?.error, data?.detail].filter(Boolean).join(" — ") ||
-    `AI grading failed (HTTP ${resp.status})`;
-  throw new Error(msg);
-}
+        if (!resp.ok){
+          const msg =
+            [data?.error, data?.detail].filter(Boolean).join(" — ") ||
+            `AI grading failed (HTTP ${resp.status})`;
+          throw new Error(msg);
+        }
 
         setResultsFromAI(data);
 
@@ -1256,7 +1264,8 @@ if (!resp.ok){
         toastShow("Grade complete.");
       }catch(e){
         console.error(e);
-        toastShow("AI grading failed. Check /api/grade + OPENAI_API_KEY.");
+        // show the actual error now
+        toastShow(String(e?.message || "AI grading failed."));
         setStatus("Error. Try again with clearer photos.");
       }finally{
         updateGradeBtn();
@@ -1277,38 +1286,46 @@ if (!resp.ok){
     });
 
     // =========================
-    // Live Camera Mode + Meter + Burst + Auto-crop + Retake
+    // Live Camera Mode + Meter + Burst + Frame-guided Crop + Auto Snap + Retake
     // =========================
     let camStream = null;
     let camFacing = "environment";
     let camStarting = false;
     let meterRAF = null;
 
-    // state for retake flow
-    let targetSide = "front"; // what "Snap" focuses on when opened via retake
-    let haveFront = false;
-    let haveBack = false;
+    // retake targeting
+    let targetSide = "front";
 
-    // crop state (normalized 0..1 relative to video frame)
-    let cropNorm = { x: 0.10, y: 0.10, w: 0.80, h: 0.80, ok: false };
-    let cropNormSmoothed = { ...cropNorm };
+    // auto snap stability
+    let stableCount = 0;
+    const STABLE_FRAMES_TO_SNAP = 22; // ~0.7s at ~30fps
+
+    // ✅ Frame guide crop (MUST match cropBox inline styles)
+    const GUIDE = { x: 0.08, y: 0.06, w: 0.84, h: 0.88 };
 
     function showCamModal(){
       camModal.classList.add('show');
       camModal.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = "hidden";
       syncChips();
+      // ensure label matches toggle
+      cropLabelEl.innerHTML = autoCropToggle.checked
+        ? `<b>Frame crop</b> align card to outline`
+        : `<b>Crop</b> off`;
+      cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
     }
+
     function hideCamModal(){
       camModal.classList.remove('show');
       camModal.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = "";
       stopCamera();
+      stableCount = 0;
     }
 
     function syncChips(){
-      haveFront = !!frontFileObj;
-      haveBack = !!backFileObj;
+      const haveFront = !!frontFileObj;
+      const haveBack = !!backFileObj;
       chipFront.innerHTML = haveFront ? `<b>Front</b>: ✓` : `<b>Front</b>: —`;
       chipBack.innerHTML = haveBack ? `<b>Back</b>: ✓` : `<b>Back</b>: —`;
       snapFront.textContent = haveFront ? "Retake Front" : "Snap Front";
@@ -1317,7 +1334,6 @@ if (!resp.ok){
 
     function playBurst(){
       burstEl.classList.remove('play');
-      // force reflow
       void burstEl.offsetWidth;
       burstEl.classList.add('play');
     }
@@ -1335,8 +1351,10 @@ if (!resp.ok){
           audio: false,
           video: {
             facingMode: { ideal: camFacing },
-            width: { ideal: 1280 },
-            height: { ideal: 960 }
+            // prefer portrait capture
+            width: { ideal: 1440 },
+            height: { ideal: 1920 },
+            aspectRatio: { ideal: 3/4 }
           }
         };
 
@@ -1369,7 +1387,6 @@ if (!resp.ok){
       await startCamera(targetSide);
     }
 
-    // ----- Meter + Auto-crop detection -----
     function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 
     function meterLoopStart(){
@@ -1386,11 +1403,7 @@ if (!resp.ok){
       meterRAF = null;
     }
 
-    // Quick frame analysis:
-    // - darkness (mean luminance)
-    // - glare (pct of pixels near white)
-    // - blur proxy (variance of Laplacian-ish)
-    // - auto-crop bounding box of strong edges
+    // Quality meter only (no auto-detection crop).
     function analyzeFrame(){
       const vw = camVideo.videoWidth;
       const vh = camVideo.videoHeight;
@@ -1405,6 +1418,9 @@ if (!resp.ok){
       camWork.width = w;
       camWork.height = h;
       const ctx = camWork.getContext("2d", { willReadFrequently: true });
+
+      // sample the central region (matches the guide better than full frame)
+      // We'll draw full then read; cheap and stable.
       ctx.drawImage(camVideo, 0, 0, w, h);
       const img = ctx.getImageData(0, 0, w, h);
       const d = img.data;
@@ -1412,8 +1428,7 @@ if (!resp.ok){
       let sumL = 0;
       let glare = 0;
 
-      // We'll also compute a rough edge map via Sobel on luminance for crop bbox + focus
-      // L buffer
+      // luminance buffer for blur proxy (gradient magnitude)
       const L = new Float32Array(w * h);
 
       for (let i = 0, p = 0; i < d.length; i += 4, p++){
@@ -1428,17 +1443,10 @@ if (!resp.ok){
       const mean = sumL / n;
       const glarePct = glare / n;
 
-      // Sobel + focus + edge bbox
-      // We'll threshold gradient magnitude to find "card-ish" boundary region.
-      let edgeCount = 0;
-      let minX = w, minY = h, maxX = 0, maxY = 0;
-
-      // Focus metric: average gradient magnitude (not perfect, but good enough for "too blurry")
+      // focus proxy via average Sobel gradient magnitude in central band
       let gradSum = 0;
-
-      // Only look in the middle to avoid background edges dominating
-      const x0 = Math.round(w * 0.08), x1 = Math.round(w * 0.92);
-      const y0 = Math.round(h * 0.08), y1 = Math.round(h * 0.92);
+      const x0 = Math.round(w * 0.10), x1 = Math.round(w * 0.90);
+      const y0 = Math.round(h * 0.10), y1 = Math.round(h * 0.90);
 
       for (let y = y0 + 1; y < y1 - 1; y++){
         for (let x = x0 + 1; x < x1 - 1; x++){
@@ -1452,27 +1460,15 @@ if (!resp.ok){
             -L[i-w-1] - 2*L[i-w] - L[i-w+1] +
              L[i+w-1] + 2*L[i+w] + L[i+w+1];
 
-          const gmag = Math.abs(gx) + Math.abs(gy);
-          gradSum += gmag;
-
-          // adaptive-ish threshold: depends on contrast
-          // (cards usually produce a strong boundary; this catches it without being too noisy)
-          const thr = 240; // tuned for 0..255 luminance scale after Sobel sums
-          if (gmag > thr){
-            edgeCount++;
-            if (x < minX) minX = x;
-            if (y < minY) minY = y;
-            if (x > maxX) maxX = x;
-            if (y > maxY) maxY = y;
-          }
+          gradSum += (Math.abs(gx) + Math.abs(gy));
         }
       }
 
-      const gradAvg = gradSum / Math.max(1, (x1-x0)*(y1-y0));
-      // normalize to 0..1-ish for meter bar
+      const denom = Math.max(1, (x1-x0)*(y1-y0));
+      const gradAvg = gradSum / denom;
       const focusScore = clamp((gradAvg - 80) / 260, 0, 1);
 
-      // meter message priorities
+      // messaging + bar
       let msg = "Meter: good";
       let level = 0.78;
 
@@ -1486,94 +1482,75 @@ if (!resp.ok){
         msg = "Too blurry — hold steady";
         level = 0.35;
       } else {
-        // good
         msg = "Meter: good";
         level = 0.65 + focusScore*0.35;
       }
 
+      // "Almost" cue
+      const almost =
+        mean >= 60 && mean <= 220 &&
+        glarePct < 0.025 &&
+        focusScore >= 0.22 &&
+        (glarePct > 0.015 || focusScore < 0.35 || mean < 70);
+
+      if (almost) msg = "Almost — hold steady";
+
       meterText.textContent = msg;
       meterFill.style.width = `${Math.round(level * 100)}%`;
 
-      // auto-crop: bbox from edges
-      if (autoCropToggle.checked && edgeCount > 650){
-        // Expand bbox slightly and validate aspect ratio near card ratio ~0.714 (2.5/3.5)
-        let bx0 = clamp(minX - Math.round(w*0.03), 0, w-1);
-        let by0 = clamp(minY - Math.round(h*0.03), 0, h-1);
-        let bx1 = clamp(maxX + Math.round(w*0.03), 0, w-1);
-        let by1 = clamp(maxY + Math.round(h*0.03), 0, h-1);
+      // ✅ Auto snap when stable "good"
+      const qualityOK =
+        mean > 70 && mean < 215 &&
+        glarePct < 0.015 &&
+        focusScore > 0.35;
 
-        const bw = Math.max(1, bx1 - bx0);
-        const bh = Math.max(1, by1 - by0);
-        const ar = bw / bh;
+      stableCount = qualityOK ? (stableCount + 1) : 0;
 
-        const arOk = (ar > 0.55 && ar < 0.92); // loose
-        const sizeOk = (bw > w*0.40 && bh > h*0.40);
+      if (autoSnap?.checked && stableCount >= STABLE_FRAMES_TO_SNAP){
+        stableCount = 0;
 
-        if (arOk && sizeOk){
-          cropNorm.ok = true;
-          cropNorm.x = bx0 / w;
-          cropNorm.y = by0 / h;
-          cropNorm.w = bw / w;
-          cropNorm.h = bh / h;
+        const next = !frontFileObj ? "front" : (!backFileObj ? "back" : targetSide);
 
-          // Smooth to reduce jitter
-          const a = 0.18;
-          cropNormSmoothed.x = cropNormSmoothed.x*(1-a) + cropNorm.x*a;
-          cropNormSmoothed.y = cropNormSmoothed.y*(1-a) + cropNorm.y*a;
-          cropNormSmoothed.w = cropNormSmoothed.w*(1-a) + cropNorm.w*a;
-          cropNormSmoothed.h = cropNormSmoothed.h*(1-a) + cropNorm.h*a;
-          cropNormSmoothed.ok = true;
+        // tiny delay so users see "good" state
+        setTimeout(async () => {
+          if (!camModal.classList.contains('show')) return;
 
-          cropLabelEl.innerHTML = `<b>Auto-crop</b> detected`;
-        } else {
-          cropNorm.ok = false;
-          cropLabelEl.innerHTML = `<b>Auto-crop</b> framing…`;
-        }
-      } else {
-        cropNorm.ok = false;
-        cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Auto-crop</b> framing…` : `<b>Auto-crop</b> off`;
+          playBurst();
+          const f = await snapToFile(`grd-${next}-${Date.now()}.jpg`);
+          if (!f) return;
+
+          if (next === "front") setFrontFile(f);
+          else setBackFile(f);
+
+          syncChips();
+          toastShow(`Auto captured: ${next}.`);
+          if (canGrade()) hideCamModal();
+        }, 120);
       }
-
-      // Apply crop box overlay (relative to displayed video element)
-      updateCropOverlay();
     }
 
-    function updateCropOverlay(){
-      // cropBox is positioned in modal relative to camStage's content box.
-      // We'll set it in percentages for the video area.
-      // Use smoothed rect if valid, else fallback inset 10%.
-      const r = (autoCropToggle.checked && cropNormSmoothed.ok) ? cropNormSmoothed : { x:0.10, y:0.10, w:0.80, h:0.80 };
-
-      cropBoxEl.style.left = `${(r.x*100).toFixed(2)}%`;
-      cropBoxEl.style.top = `${(r.y*100).toFixed(2)}%`;
-      cropBoxEl.style.width = `${(r.w*100).toFixed(2)}%`;
-      cropBoxEl.style.height = `${(r.h*100).toFixed(2)}%`;
-      cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
-    }
-
-    // Capture current frame -> (optional crop) -> File
+    // Capture frame -> (optional frame crop) -> File
     async function snapToFile(name){
-      const vw = camVideo.videoWidth || 1280;
-      const vh = camVideo.videoHeight || 960;
+      const vw = camVideo.videoWidth || 1440;
+      const vh = camVideo.videoHeight || 1920;
 
-      // Capture full-res frame first
+      // Capture full-res frame
       camCanvas.width = vw;
       camCanvas.height = vh;
       const ctx = camCanvas.getContext("2d");
       ctx.drawImage(camVideo, 0, 0, vw, vh);
 
-      // Optional crop based on detected norm rect from *downscaled* analysis.
-      // Map cropNormSmoothed to full-res:
       let outCanvas = camCanvas;
-      if (autoCropToggle.checked && cropNormSmoothed.ok){
-        const x = Math.round(cropNormSmoothed.x * vw);
-        const y = Math.round(cropNormSmoothed.y * vh);
-        const w = Math.round(cropNormSmoothed.w * vw);
-        const h = Math.round(cropNormSmoothed.h * vh);
 
-        // safety clamps
-        const sx = clamp(x, 0, vw-1);
-        const sy = clamp(y, 0, vh-1);
+      // ✅ Frame-guided crop (always matches the on-screen guide)
+      if (autoCropToggle.checked){
+        const x = Math.round(GUIDE.x * vw);
+        const y = Math.round(GUIDE.y * vh);
+        const w = Math.round(GUIDE.w * vw);
+        const h = Math.round(GUIDE.h * vh);
+
+        const sx = clamp(x, 0, vw - 1);
+        const sy = clamp(y, 0, vh - 1);
         const sw = clamp(w, 1, vw - sx);
         const sh = clamp(h, 1, vh - sy);
 
@@ -1597,24 +1574,24 @@ if (!resp.ok){
       return new File([blob], name, { type: "image/jpeg" });
     }
 
-    // Camera controls wiring
+    // Camera controls
     cameraBtn?.addEventListener('click', () => startCamera("front"));
     camClose?.addEventListener('click', hideCamModal);
     camBg?.addEventListener('click', hideCamModal);
     camSwitch?.addEventListener('click', switchCamera);
 
-    // Instant “retake” flow (main page buttons)
+    // Retake flow (main page buttons)
     retakeFrontBtn?.addEventListener('click', () => startCamera("front"));
     retakeBackBtn?.addEventListener('click', () => startCamera("back"));
 
-    // Snap/Retake actions inside modal
+    // Snap buttons
     snapFront?.addEventListener('click', async ()=>{
       playBurst();
       const f = await snapToFile(`grd-front-${Date.now()}.jpg`);
       if (f){
         setFrontFile(f);
         syncChips();
-        toastShow(frontFileObj ? "Front captured." : "Front ready.");
+        toastShow("Front captured.");
       }
     });
 
@@ -1624,7 +1601,7 @@ if (!resp.ok){
       if (f){
         setBackFile(f);
         syncChips();
-        toastShow(backFileObj ? "Back captured." : "Back ready.");
+        toastShow("Back captured.");
         if (canGrade()) hideCamModal();
       }
     });
@@ -1636,12 +1613,13 @@ if (!resp.ok){
       }
     });
 
-    // Update crop label immediately on toggle
+    // Crop toggle updates
     autoCropToggle.addEventListener('change', ()=>{
-      cropNormSmoothed.ok = false;
-      cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Auto-crop</b> framing…` : `<b>Auto-crop</b> off`;
-      updateCropOverlay();
-      toastShow(autoCropToggle.checked ? "Auto-crop on" : "Auto-crop off");
+      cropLabelEl.innerHTML = autoCropToggle.checked
+        ? `<b>Frame crop</b> align card to outline`
+        : `<b>Crop</b> off`;
+      cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
+      toastShow(autoCropToggle.checked ? "Frame crop on" : "Crop off");
     });
 
     // Init
