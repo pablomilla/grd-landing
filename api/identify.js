@@ -18,6 +18,21 @@ async function readBody(req){
 
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
+function getOutputText(respJson){
+  const items = respJson?.output || [];
+  for (const item of items){
+    if (item.type === "message" && Array.isArray(item.content)){
+      const parts = item.content
+        .filter(p => p.type === "output_text" && typeof p.text === "string")
+        .map(p => p.text);
+      if (parts.length) return parts.join("\n").trim();
+    }
+  }
+  // Fallback: sometimes SDKs return output_text at top-level
+  if (typeof respJson?.output_text === "string") return respJson.output_text.trim();
+  return "";
+}
+
 async function openaiVisionExtract({ frontDataUrl, backDataUrl }){
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("Missing OPENAI_API_KEY");
@@ -25,9 +40,7 @@ async function openaiVisionExtract({ frontDataUrl, backDataUrl }){
   const system = `You are a trading card identification assistant for: Pokemon, Magic: The Gathering, and Yu-Gi-Oh.
 Return ONLY valid JSON matching the schema. Do not include markdown.`;
 
-  const user = {
-    type: "text",
-    text:
+  const userText =
 `Extract card identity fields from the provided images.
 Focus on FRONT for name, set, collector number / set code, variant (foil/holo/reverse/etched/1st edition), language, and any edition markers.
 If unsure, return best guess and lower confidence.
@@ -36,21 +49,17 @@ Return JSON with:
 {
   "game": "pokemon"|"mtg"|"yugioh"|"unknown",
   "name": string|null,
-  "set": string|null,           // set name or set code if available
-  "setCode": string|null,       // e.g. MTG set code, or Yu-Gi-Oh set code like LOB-000
-  "collectorNumber": string|null, // Pokemon or MTG collector number if visible
-  "variant": string|null,       // e.g. "holo", "reverse holo", "foil", "etched", "1st edition"
-  "language": string|null,      // e.g. "English"
-  "confidence": number          // 0..1
-}`
-  };
+  "set": string|null,
+  "setCode": string|null,
+  "collectorNumber": string|null,
+  "variant": string|null,
+  "language": string|null,
+  "confidence": number
+}`;
 
-  const content = [
-    user,
-    { type:"image_url", image_url: { url: frontDataUrl } },
-    { type:"image_url", image_url: { url: backDataUrl } }
-  ];
-
+  // ✅ Responses API content item types:
+  // - input_text
+  // - input_image (with image_url as a string)
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -60,8 +69,20 @@ Return JSON with:
     body: JSON.stringify({
       model: "gpt-4.1-mini",
       input: [
-        { role:"system", content: system },
-        { role:"user", content }
+        {
+          role: "system",
+          content: [
+            { type: "input_text", text: system }
+          ]
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: userText },
+            { type: "input_image", image_url: frontDataUrl },
+            { type: "input_image", image_url: backDataUrl }
+          ]
+        }
       ],
       temperature: 0.2,
       max_output_tokens: 500
@@ -73,9 +94,8 @@ Return JSON with:
     throw new Error(data?.error?.message || "OpenAI identify failed");
   }
 
-  // Extract text output
-  const out = (data.output || []).flatMap(o => o.content || []);
-  const text = out.map(c => c.text).filter(Boolean).join("\n").trim();
+  const text = getOutputText(data);
+  if (!text) throw new Error("Identify: no output_text returned");
 
   let parsed;
   try{ parsed = JSON.parse(text); } catch(e){
@@ -89,8 +109,6 @@ Return JSON with:
 // --- Canonical resolution helpers ---
 
 async function resolveMTG({ name, setCode, collectorNumber }){
-  // Use Scryfall search
-  // Prefer collector number + set code if available
   const params = [];
   if (name) params.push(`!"${name.replace(/"/g,'')}"`);
   if (setCode) params.push(`set:${setCode}`);
@@ -123,7 +141,6 @@ async function resolveMTG({ name, setCode, collectorNumber }){
 }
 
 async function resolveYugioh({ name, setCode }){
-  // YGOPRODeck: if set code known, use cardinfo?cardset=... doesn't exist; easiest is search by name
   if (!name && !setCode) return [];
   const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(name || setCode)}`;
   const r = await fetch(url);
@@ -132,7 +149,6 @@ async function resolveYugioh({ name, setCode }){
 
   const candidates = [];
   for (const c of j.data.slice(0, 6)){
-    // Find matching set code if provided
     let bestSet = null;
     if (Array.isArray(c.card_sets) && c.card_sets.length){
       if (setCode){
@@ -163,8 +179,6 @@ async function resolveYugioh({ name, setCode }){
 }
 
 async function resolvePokemon({ name, set, setCode, collectorNumber }){
-  // PokémonTCG.io (no Cardmarket needed)
-  // Prefer number + set code, but this API uses set.id, set.name; we'll search by name + number + set name guess
   if (!name) return [];
   const apiKey = process.env.POKETCG_API_KEY;
 
@@ -202,14 +216,9 @@ async function resolvePokemon({ name, set, setCode, collectorNumber }){
 function boostByMatch(extracted, cand){
   let score = cand.confidence || 0.5;
 
-  // match set code
   if (extracted.setCode && cand.setCode && String(extracted.setCode).toLowerCase() === String(cand.setCode).toLowerCase()) score += 0.18;
-  // match collector number
   if (extracted.collectorNumber && cand.collectorNumber && String(extracted.collectorNumber).toLowerCase() === String(cand.collectorNumber).toLowerCase()) score += 0.18;
-  // match set name approx
   if (extracted.set && cand.set && String(cand.set).toLowerCase().includes(String(extracted.set).toLowerCase())) score += 0.10;
-
-  // variant hints
   if (extracted.variant && cand.variant && String(cand.variant).toLowerCase().includes(String(extracted.variant).toLowerCase())) score += 0.08;
 
   return clamp(score, 0, 0.99);
@@ -234,7 +243,6 @@ export default async function handler(req, res){
     } else if (game === "pokemon"){
       candidates = await resolvePokemon(extracted);
     } else {
-      // try all, then sort
       const [m, y, p] = await Promise.all([
         resolveMTG(extracted),
         resolveYugioh(extracted),
@@ -243,21 +251,11 @@ export default async function handler(req, res){
       candidates = [...m, ...y, ...p];
     }
 
-    // boost confidences using extracted matches, then sort
     candidates = candidates.map(c => ({
       ...c,
       confidence: boostByMatch(extracted, c)
     })).sort((a,b)=> (b.confidence||0) - (a.confidence||0));
 
-    // If nothing, return extracted only
-    if (!candidates.length){
-      return json(res, 200, {
-        extracted,
-        candidates: []
-      });
-    }
-
-    // return top candidates
     return json(res, 200, {
       extracted,
       candidates: candidates.slice(0, 6)
