@@ -1240,10 +1240,12 @@
         });
 
         const data = await resp.json().catch(()=> ({}));
-        if (!resp.ok){
-          const msg = data?.error || "AI grading failed.";
-          throw new Error(msg);
-        }
+if (!resp.ok){
+  const msg =
+    [data?.error, data?.detail].filter(Boolean).join(" — ") ||
+    `AI grading failed (HTTP ${resp.status})`;
+  throw new Error(msg);
+}
 
         setResultsFromAI(data);
 
