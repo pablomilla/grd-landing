@@ -149,25 +149,13 @@
       transform: translateY(-1px);
       background: rgba(255,255,255,.78);
     }
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
+    .row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
     .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:12px 14px;
-      border-radius:14px;
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:12px 14px; border-radius:14px;
       border:1px solid rgba(11,15,20,.16);
-      background: var(--fg);
-      color:#fff;
-      font-weight:780;
-      letter-spacing:-0.01em;
-      font-size:13px;
+      background: var(--fg); color:#fff;
+      font-weight:780; letter-spacing:-0.01em; font-size:13px;
       cursor:pointer;
       transition: transform .12s ease, opacity .18s ease, box-shadow .18s ease;
       box-shadow: 0 14px 30px rgba(11,15,20,.16);
@@ -191,197 +179,90 @@
       backdrop-filter: blur(18px) saturate(1.2);
       -webkit-backdrop-filter: blur(18px) saturate(1.2);
     }
-
     input[type="file"]{display:none;}
-    .hint{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.45;
-    }
+    .hint{color:var(--muted); font-size:12px; line-height:1.45;}
     .hint b{color:var(--fg)}
-
-    .toggles{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:2px;
-    }
+    .toggles{display:flex; gap:10px; flex-wrap:wrap; margin-top:2px;}
     .toggle{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 12px;
-      border-radius:999px;
+      display:flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:999px;
       border:1px solid rgba(11,15,20,.10);
       background: rgba(255,255,255,.58);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      font-size:12px;
-      color:var(--muted);
+      font-size:12px; color:var(--muted);
     }
     .toggle input{accent-color:#0b0f14;}
     .toggle span{color:var(--fg); font-weight:650}
 
-    .previewWrap{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-    }
-    @media (max-width: 820px){
-      .previewWrap{grid-template-columns:1fr;}
-    }
+    .previewWrap{margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
+    @media (max-width: 820px){ .previewWrap{grid-template-columns:1fr;} }
     .preview{
-      border-radius:22px;
-      border:1px solid rgba(11,15,20,.10);
+      border-radius:22px; border:1px solid rgba(11,15,20,.10);
       background: rgba(255,255,255,.58);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      overflow:hidden;
-      box-shadow: var(--shadow2);
-      position:relative;
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      overflow:hidden; box-shadow: var(--shadow2); position:relative;
     }
     .preview::before{
-      content:"";
-      position:absolute;
-      inset:-55%;
+      content:""; position:absolute; inset:-55%;
       background: linear-gradient(120deg, transparent 38%, rgba(255,255,255,.55) 50%, transparent 62%);
       transform: translateX(-35%) rotate(18deg);
       animation: sheen 4.6s ease-in-out infinite;
-      pointer-events:none;
-      opacity:.7;
-      mix-blend-mode: screen;
+      pointer-events:none; opacity:.7; mix-blend-mode: screen;
     }
-    @keyframes sheen{
-      0%{transform: translateX(-55%) rotate(18deg);}
-      50%{transform: translateX(8%) rotate(18deg);}
-      100%{transform: translateX(55%) rotate(18deg);}
-    }
-    .img{
-      width:100%;
-      display:block;
-      aspect-ratio: 3 / 4;
-      object-fit: cover;
-      background: rgba(11,15,20,.04);
-    }
+    @keyframes sheen{ 0%{transform: translateX(-55%) rotate(18deg);} 50%{transform: translateX(8%) rotate(18deg);} 100%{transform: translateX(55%) rotate(18deg);} }
+    .img{width:100%; display:block; aspect-ratio: 3 / 4; object-fit: cover; background: rgba(11,15,20,.04);}
     .cap{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding:10px 12px;
-      border-top:1px solid rgba(11,15,20,.08);
-      font-size:12px;
-      color:var(--muted);
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding:10px 12px; border-top:1px solid rgba(11,15,20,.08);
+      font-size:12px; color:var(--muted);
       background: rgba(255,255,255,.45);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       position:relative;
     }
     .cap b{color:var(--fg); font-weight:760}
     .cap .mini{opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 240px;}
     .cap .actions{display:flex; gap:8px; flex-wrap:wrap;}
+    .status{display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted); margin-top:10px;}
+    .dot{width:10px;height:10px;border-radius:999px;background:#0b0f14; box-shadow: 0 0 0 4px rgba(11,15,20,.08);}
 
-    .status{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      font-size:12px;
-      color:var(--muted);
-      margin-top:10px;
-    }
-    .dot{
-      width:10px;height:10px;border-radius:999px;background:#0b0f14;
-      box-shadow: 0 0 0 4px rgba(11,15,20,.08);
-    }
-
-    .resultTop{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
-      margin-bottom:12px;
-    }
+    .resultTop{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px;}
     .label{font-size:12px; color:var(--muted); margin:0 0 6px;}
-    .grade{
-      font-weight:930;
-      letter-spacing:-0.06em;
-      font-size: 46px;
-      line-height:1;
-      margin:0;
-    }
-    .grade small{
-      font-size:14px;
-      letter-spacing:-0.01em;
-      color:var(--muted);
-      font-weight:700;
-      margin-left:10px;
-    }
-    .rows{
-      border-top:1px solid var(--line2);
-      padding-top:14px;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px 16px;
-    }
+    .grade{font-weight:930; letter-spacing:-0.06em; font-size: 46px; line-height:1; margin:0;}
+    .grade small{font-size:14px; letter-spacing:-0.01em; color:var(--muted); font-weight:700; margin-left:10px;}
+    .rows{border-top:1px solid var(--line2); padding-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px;}
     .r{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      padding:10px 12px;
-      border:1px solid rgba(11,15,20,.10);
-      border-radius:14px;
-      background: rgba(255,255,255,.58);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      font-size:13px;
-      color:var(--muted);
+      display:flex; justify-content:space-between; gap:12px;
+      padding:10px 12px; border:1px solid rgba(11,15,20,.10);
+      border-radius:14px; background: rgba(255,255,255,.58);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      font-size:13px; color:var(--muted);
     }
     .r b{color:var(--fg); font-weight:820}
-    .notes{
-      margin-top:14px;
-      border-top:1px solid var(--line2);
-      padding-top:14px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.6;
-    }
+    .notes{margin-top:14px; border-top:1px solid var(--line2); padding-top:14px; color:var(--muted); font-size:13px; line-height:1.6;}
     .notes ul{margin:8px 0 0 18px; padding:0;}
     .notes li{margin:6px 0;}
 
     .footer{
-      max-width:1120px;
-      margin:0 auto;
-      width:100%;
+      max-width:1120px; margin:0 auto; width:100%;
       padding: 0 24px 26px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      color:var(--muted);
-      font-size:12px;
-      flex-wrap:wrap;
+      display:flex; justify-content:space-between; align-items:center;
+      gap:12px; color:var(--muted); font-size:12px; flex-wrap:wrap;
     }
     .links{display:flex; gap:14px; align-items:center; flex-wrap:wrap;}
     .links a{
-      padding:8px 10px;
-      border:1px solid rgba(11,15,20,.10);
-      border-radius:999px;
-      background:rgba(255,255,255,.55);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      padding:8px 10px; border:1px solid rgba(11,15,20,.10);
+      border-radius:999px; background:rgba(255,255,255,.55);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       transition: transform .18s ease, opacity .18s ease;
     }
     .links a:hover{transform: translateY(-1px); opacity:.95;}
     .sep{opacity:.4}
 
     .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
+      position: fixed; left: 50%; bottom: 18px;
       transform: translateX(-50%) translateY(16px);
-      opacity: 0;
-      pointer-events:none;
+      opacity: 0; pointer-events:none;
       background: rgba(255,255,255,.72);
       border: 1px solid rgba(11,15,20,.10);
       border-radius: 999px;
@@ -389,15 +270,10 @@
       backdrop-filter: blur(18px) saturate(1.2);
       -webkit-backdrop-filter: blur(18px) saturate(1.2);
       box-shadow: 0 16px 40px rgba(11,15,20,.14);
-      color: var(--fg);
-      font-size: 12px;
+      color: var(--fg); font-size: 12px;
       transition: opacity .2s ease, transform .2s ease;
       max-width: min(780px, calc(100% - 24px));
-      display:flex;
-      gap:10px;
-      align-items:center;
-      justify-content:center;
-      text-align:center;
+      display:flex; gap:10px; align-items:center; justify-content:center; text-align:center;
     }
     .toast.show{opacity:1; transform: translateX(-50%) translateY(0);}
     .toast .tDot{
@@ -406,190 +282,84 @@
       flex:0 0 auto;
     }
 
-    /* Camera modal */
-    .modal{
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      z-index: 1000;
-    }
+    .modal{position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 18px; z-index: 1000;}
     .modal.show{ display:flex; }
-    .modalBg{
-      position:absolute;
-      inset:0;
-      background: rgba(11,15,20,.38);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
+    .modalBg{position:absolute; inset:0; background: rgba(11,15,20,.38); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);}
     .modalCard{
-      position:relative;
-      width:min(980px, 100%);
-      border-radius: 26px;
-      border:1px solid rgba(255,255,255,.18);
+      position:relative; width:min(980px, 100%);
+      border-radius: 26px; border:1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.60);
       backdrop-filter: blur(22px) saturate(1.25);
       -webkit-backdrop-filter: blur(22px) saturate(1.25);
       box-shadow: 0 30px 90px rgba(0,0,0,.25);
-      overflow:hidden;
-      transform: translateY(8px);
-      opacity: 0;
+      overflow:hidden; transform: translateY(8px); opacity: 0;
       animation: camIn .28s cubic-bezier(.2,.8,.2,1) forwards;
     }
     @keyframes camIn{ to{ transform: translateY(0); opacity: 1; } }
     .modalCard::before{
-      content:"";
-      position:absolute;
-      inset:-2px;
+      content:""; position:absolute; inset:-2px;
       background:
         radial-gradient(700px 320px at 15% 10%, rgba(255,255,255,.58), transparent 62%),
         radial-gradient(520px 260px at 85% 18%, rgba(255,255,255,.34), transparent 62%),
         linear-gradient(180deg, rgba(255,255,255,.22), transparent 35%, rgba(255,255,255,.10));
-      pointer-events:none;
-      opacity:.75;
-      mix-blend-mode: screen;
+      pointer-events:none; opacity:.75; mix-blend-mode: screen;
     }
     .modalCard::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      border-radius: inherit;
+      content:""; position:absolute; inset:0; border-radius: inherit;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(11,15,20,.06);
-      pointer-events:none;
-      opacity:.9;
+      pointer-events:none; opacity:.9;
     }
 
     .modalInner{ position:relative; padding: 18px; }
-    .modalTop{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom: 12px;
-      flex-wrap:wrap;
-    }
+    .modalTop{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom: 12px; flex-wrap:wrap;}
     .modalTitle{ font-weight: 820; letter-spacing:-0.03em; margin:0; }
     .modalSub{ margin:6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
 
-    .meter{
-      display:flex;
-      flex-direction:column;
-      align-items:flex-end;
-      gap:8px;
-      min-width: 240px;
-    }
+    .meter{display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width: 240px;}
     .meterPill{
-      border:1px solid rgba(11,15,20,.10);
-      border-radius:999px;
-      padding:8px 10px;
-      background: rgba(255,255,255,.62);
-      backdrop-filter: blur(14px) saturate(1.2);
-      -webkit-backdrop-filter: blur(14px) saturate(1.2);
-      font-size:12px;
-      color: var(--muted);
-      max-width: 360px;
-      text-align:right;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      border:1px solid rgba(11,15,20,.10); border-radius:999px;
+      padding:8px 10px; background: rgba(255,255,255,.62);
+      backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      font-size:12px; color: var(--muted); max-width: 360px;
+      text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    .meterBar{
-      width: 240px;
-      height: 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(11,15,20,.10);
-      background: rgba(255,255,255,.55);
-      overflow:hidden;
-    }
-    .meterFill{
-      height:100%;
-      width: 0%;
-      border-radius:999px;
-      background: rgba(11,15,20,.78);
-      transform-origin: left center;
-      transition: width .12s ease;
-      opacity:.9;
-    }
+    .meterBar{width: 240px; height: 8px; border-radius: 999px; border: 1px solid rgba(11,15,20,.10); background: rgba(255,255,255,.55); overflow:hidden;}
+    .meterFill{height:100%; width: 0%; border-radius:999px; background: rgba(11,15,20,.78); transform-origin: left center; transition: width .10s linear; opacity:.9;}
 
     .camStage{
-      border-radius: 22px;
-      border:1px solid rgba(11,15,20,.10);
+      border-radius: 22px; border:1px solid rgba(11,15,20,.10);
       background: rgba(255,255,255,.52);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      overflow:hidden;
-      box-shadow: var(--shadow2);
-      position:relative;
-      max-height: 72vh;
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      overflow:hidden; box-shadow: var(--shadow2);
+      position:relative; max-height: 72vh;
     }
-    .camVideo{
-      width:100%;
-      display:block;
-      aspect-ratio: 3 / 4;
-      object-fit: cover;
-      background: rgba(11,15,20,.06);
-    }
+    .camVideo{width:100%; display:block; aspect-ratio: 3 / 4; object-fit: cover; background: rgba(11,15,20,.06);}
     .frameGuide{ position:absolute; inset:0; pointer-events:none; }
     .frameGuide::after{
-      content:"";
-      position:absolute;
-      inset:0;
+      content:""; position:absolute; inset:0;
       background:
         radial-gradient(900px 420px at 50% 10%, rgba(255,255,255,.16), transparent 50%),
         radial-gradient(700px 380px at 50% 90%, rgba(11,15,20,.10), transparent 55%);
       opacity:.85;
     }
-
-    .cropBox{
-      position:absolute;
-      border-radius: 22px;
-      border: 1px solid rgba(255,255,255,.78);
-      box-shadow: 0 0 0 1px rgba(11,15,20,.12) inset;
-      pointer-events:none;
-      opacity:.95;
-    }
+    .cropBox{position:absolute; border-radius: 22px; border: 1px solid rgba(255,255,255,.78); box-shadow: 0 0 0 1px rgba(11,15,20,.12) inset; pointer-events:none; opacity:.95;}
     .cropLabel{
-      position:absolute;
-      left: 14px;
-      bottom: 14px;
-      border-radius:999px;
-      border:1px solid rgba(11,15,20,.10);
+      position:absolute; left: 14px; bottom: 14px;
+      border-radius:999px; border:1px solid rgba(11,15,20,.10);
       background: rgba(255,255,255,.62);
-      backdrop-filter: blur(14px) saturate(1.2);
-      -webkit-backdrop-filter: blur(14px) saturate(1.2);
-      padding: 8px 10px;
-      font-size:12px;
-      color: var(--muted);
-      display:flex;
-      align-items:center;
-      gap:10px;
+      backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      padding: 8px 10px; font-size:12px; color: var(--muted);
+      display:flex; align-items:center; gap:10px;
       max-width: calc(100% - 28px);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .cropLabel b{color: var(--fg); font-weight:780;}
 
-    .camBar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-      margin-top: 12px;
-    }
+    .camBar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top: 12px;}
     .seg{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .kbdHint{ font-size:12px; color: var(--muted); }
 
-    .burst{
-      position:absolute;
-      inset:0;
-      background: #fff;
-      opacity:0;
-      pointer-events:none;
-    }
+    .burst{position:absolute; inset:0; background: #fff; opacity:0; pointer-events:none;}
     .burst.play{ animation: burst .22s ease-out; }
     @keyframes burst{ 0%{opacity:0} 18%{opacity:.65} 100%{opacity:0} }
 
@@ -626,7 +396,6 @@
 
     <main>
       <section class="grid" aria-label="AI grading">
-        <!-- Left: uploader -->
         <div class="panel">
           <div class="inner">
             <h1>Grade from front + back.</h1>
@@ -712,7 +481,6 @@
           </div>
         </div>
 
-        <!-- Right: results -->
         <div class="panel">
           <div class="inner">
             <div class="resultTop">
@@ -774,7 +542,7 @@
           </div>
 
           <div class="meter" aria-label="Capture meter">
-            <div class="meterPill" id="meterText">Hold steady to capture</div>
+            <div class="meterPill" id="meterText">Hold steady to capture…</div>
             <div class="meterBar" aria-hidden="true">
               <div class="meterFill" id="meterFill"></div>
             </div>
@@ -788,10 +556,7 @@
         <div class="camStage">
           <video class="camVideo" id="camVideo" playsinline muted autoplay></video>
           <div class="frameGuide" aria-hidden="true"></div>
-
-          <!-- Frame-guided crop box -->
           <div class="cropBox" id="cropBox" style="left:8%;top:6%;width:84%;height:88%;"></div>
-
           <div class="cropLabel" id="cropLabel"><b>Frame crop</b> align card to outline</div>
           <div class="burst" id="burst"></div>
         </div>
@@ -800,7 +565,7 @@
           <div class="seg">
             <button class="btn secondary" id="camSwitch" type="button">Switch camera</button>
             <button class="btn secondary" id="camClose" type="button">Close</button>
-            <span class="kbdHint" id="camHint">Tip: tilt slightly to reduce glare.</span>
+            <span class="kbdHint" id="camHint">Tip: a tiny tilt helps with reflections.</span>
           </div>
 
           <div class="seg">
@@ -837,11 +602,7 @@
     yearEl.textContent = new Date().getFullYear();
     function updateTime() {
       const now = new Date();
-      const london = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Europe/London',
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(now);
+      const london = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }).format(now);
       timeEl.textContent = london;
     }
     updateTime();
@@ -855,7 +616,6 @@
     const backImg = document.getElementById('backImg');
     const frontMeta = document.getElementById('frontMeta');
     const backMeta = document.getElementById('backMeta');
-
     const statusEl = document.getElementById('status');
     const gradeBtn = document.getElementById('gradeBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -1135,8 +895,7 @@
         }
 
         setResultsFromAI(data);
-        const conf = typeof data.confidence === "number" ? ` (confidence ${(data.confidence*100).toFixed(0)}%)` : "";
-        setStatus("Done." + conf);
+        setStatus("Done.");
         toastShow("Grade complete.");
       }catch(e){
         console.error(e);
@@ -1161,16 +920,18 @@
     });
 
     // =========================
-    // Live Camera: "Hold to fill bar" -> Capture when full
+    // Live Camera: SUPER forgiving bar that ALWAYS fills in normal light
     // =========================
     let camStream = null;
     let camFacing = "environment";
     let camStarting = false;
     let meterRAF = null;
 
-    // progress logic
-    let hold = 0;           // 0..1
-    let capturing = false;  // lock during capture to prevent duplicates
+    let hold = 0;                 // 0..1
+    let capturing = false;         // lock
+    let goodEnoughMs = 0;          // time spent above "good enough"
+    const GOOD_ENOUGH_AT = 0.70;   // capture threshold
+    const GOOD_ENOUGH_HOLD = 600;  // ms above threshold to trigger
 
     // Frame guide crop (matches cropBox)
     const GUIDE = { x: 0.08, y: 0.06, w: 0.84, h: 0.88 };
@@ -1181,6 +942,7 @@
       document.body.style.overflow = "hidden";
       syncChips();
       setHold(0);
+      goodEnoughMs = 0;
       cropLabelEl.innerHTML = autoCropToggle.checked ? `<b>Frame crop</b> align card to outline` : `<b>Crop</b> off`;
       cropBoxEl.style.opacity = autoCropToggle.checked ? "0.95" : "0.55";
     }
@@ -1190,23 +952,15 @@
       document.body.style.overflow = "";
       stopCamera();
       setHold(0);
+      goodEnoughMs = 0;
       capturing = false;
     }
 
     function syncChips(){
-      const haveFront = !!frontFileObj;
-      const haveBack = !!backFileObj;
-      chipFront.innerHTML = haveFront ? `<b>Front</b>: ✓` : `<b>Front</b>: —`;
-      chipBack.innerHTML = haveBack ? `<b>Back</b>: ✓` : `<b>Back</b>: —`;
-      snapFront.textContent = haveFront ? "Retake Front" : "Snap Front";
-      snapBack.textContent = haveBack ? "Retake Back" : "Snap Back";
-    }
-
-    function toastShow(msg){
-      toastMsg.textContent = msg;
-      toast.classList.add('show');
-      clearTimeout(toast._t);
-      toast._t = setTimeout(()=>toast.classList.remove('show'), 2400);
+      chipFront.innerHTML = frontFileObj ? `<b>Front</b>: ✓` : `<b>Front</b>: —`;
+      chipBack.innerHTML  = backFileObj  ? `<b>Back</b>: ✓`  : `<b>Back</b>: —`;
+      snapFront.textContent = frontFileObj ? "Retake Front" : "Snap Front";
+      snapBack.textContent  = backFileObj  ? "Retake Back"  : "Snap Back";
     }
 
     function playBurst(){
@@ -1264,9 +1018,13 @@
 
     function meterLoopStart(){
       meterLoopStop();
+      let lastT = performance.now();
       const loop = () => {
         if (!camModal.classList.contains('show') || !camVideo.videoWidth) return;
-        analyzeFrameAndUpdateHold();
+        const now = performance.now();
+        const dt = Math.min(80, Math.max(0, now - lastT)); // ms
+        lastT = now;
+        analyzeAndFill(dt);
         meterRAF = requestAnimationFrame(loop);
       };
       meterRAF = requestAnimationFrame(loop);
@@ -1281,50 +1039,46 @@
       meterFill.style.width = `${Math.round(hold * 100)}%`;
     }
 
-    // Decide which side we should capture next (always front then back unless retaking)
     function nextSide(){
       if (!frontFileObj) return "front";
       if (!backFileObj) return "back";
-      // If both already exist, default to back retake (most common) but user can press buttons
       return "back";
     }
 
-    async function captureNextByHold(){
+    async function captureNext(){
       if (capturing) return;
       capturing = true;
 
       const side = nextSide();
       meterText.textContent = `Capturing ${side}…`;
-
       playBurst();
-      const f = await snapToFile(`grd-${side}-${Date.now()}.jpg`);
 
+      const f = await snapToFile(`grd-${side}-${Date.now()}.jpg`);
       if (f){
         if (side === "front") setFrontFile(f);
         else setBackFile(f);
-
         syncChips();
         toastShow(`${side === "front" ? "Front" : "Back"} captured.`);
       } else {
         toastShow("Couldn’t capture. Try again.");
       }
 
-      // reset hold for next side
       setHold(0);
+      goodEnoughMs = 0;
       capturing = false;
 
       if (canGrade()) hideCamModal();
       else meterText.textContent = `Hold steady to capture ${nextSide()}…`;
     }
 
-    // ✅ New: hold-to-capture logic (looser glare/blur; fills when "acceptable")
-    function analyzeFrameAndUpdateHold(){
+    // ✅ NEW forgiving analysis: bar fills on "usable" not "perfect"
+    function analyzeAndFill(dtMs){
       const vw = camVideo.videoWidth;
       const vh = camVideo.videoHeight;
       if (!vw || !vh) return;
 
-      // downscale for analysis
-      const targetW = 320;
+      // downscale (fast)
+      const targetW = 260;
       const scale = targetW / vw;
       const w = Math.max(1, Math.round(vw * scale));
       const h = Math.max(1, Math.round(vh * scale));
@@ -1337,8 +1091,13 @@
       const img = ctx.getImageData(0, 0, w, h);
       const d = img.data;
 
+      // Very lightweight metrics:
+      // - brightness mean
+      // - highlight pct (very forgiving)
+      // - focus proxy (very forgiving)
       let sumL = 0;
-      let glare = 0;
+      let highlights = 0;
+
       const L = new Float32Array(w*h);
 
       for (let i=0, p=0; i<d.length; i+=4, p++){
@@ -1346,59 +1105,75 @@
         const lum = 0.2126*r + 0.7152*g + 0.0722*b;
         L[p] = lum;
         sumL += lum;
-        // very relaxed highlight counting (only extreme)
-        if (lum > 253) glare++;
+        if (lum > 254) highlights++; // only extreme specular
       }
 
       const n = w*h;
       const mean = sumL / n;
-      const glarePct = glare / n;
+      const hiPct = highlights / n;
 
-      // quick focus proxy
+      // focus proxy: average gradient magnitude (super forgiving)
       let gradSum = 0;
-      const x0 = Math.round(w*0.12), x1 = Math.round(w*0.88);
-      const y0 = Math.round(h*0.12), y1 = Math.round(h*0.88);
+      const x0 = Math.round(w*0.18), x1 = Math.round(w*0.82);
+      const y0 = Math.round(h*0.18), y1 = Math.round(h*0.82);
+
       for (let y=y0+1; y<y1-1; y++){
         for (let x=x0+1; x<x1-1; x++){
           const i = y*w + x;
-          const gx =
-            -L[i-w-1] - 2*L[i-1] - L[i+w-1] +
-             L[i-w+1] + 2*L[i+1] + L[i+w+1];
-          const gy =
-            -L[i-w-1] - 2*L[i-w] - L[i-w+1] +
-             L[i+w-1] + 2*L[i+w] + L[i+w+1];
+          const gx = -L[i-1] + L[i+1];
+          const gy = -L[i-w] + L[i+w];
           gradSum += (Math.abs(gx) + Math.abs(gy));
         }
       }
       const denom = Math.max(1, (x1-x0)*(y1-y0));
       const gradAvg = gradSum / denom;
-      const focusScore = clamp((gradAvg - 70) / 300, 0, 1); // looser mapping
+      const focus = clamp((gradAvg - 6) / 24, 0, 1); // tuned for this simpler gradient
 
-      // gating (very realistic thresholds)
-      const tooDark = mean < 45;
-      const tooBright = mean > 245;
-      const tooGlare = glarePct > 0.085;   // relaxed
-      const tooBlurry = focusScore < 0.16; // relaxed
+      // Only HARD block is extremely dark
+      if (mean < 30){
+        meterText.textContent = "Too dark — add light";
+        setHold(hold - 0.05);
+        goodEnoughMs = 0;
+        return;
+      }
 
-      const acceptable = !tooDark && !tooBright && !tooGlare && !tooBlurry;
+      // Build a forgiving "quality score" 0..1
+      // - brightness in a broad sweet range
+      // - focus helps but doesn't block
+      // - highlights reduce a bit but doesn't block
+      const brightScore = clamp((mean - 35) / 140, 0, 1); // broad
+      const glarePenalty = clamp(hiPct / 0.08, 0, 1);     // very forgiving
 
-      // messaging
-      if (tooDark) meterText.textContent = "Too dark — add light";
-      else if (tooGlare) meterText.textContent = "Glare — tilt slightly";
-      else if (tooBlurry) meterText.textContent = "Blurry — hold steady";
-      else meterText.textContent = `Hold steady to capture ${nextSide()}…`;
+      const score = clamp(
+        0.55 * brightScore +
+        0.35 * focus +
+        0.10 * (1 - glarePenalty),
+        0, 1
+      );
 
-      // progress behavior:
-      // - if acceptable: fill fairly quickly
-      // - if not: slowly decay (so user sees progress but it doesn't instantly drop to zero)
-      const up = 0.030;   // fill speed per frame (approx)
-      const down = 0.020; // decay speed
-      if (acceptable) setHold(hold + up);
-      else setHold(hold - down);
+      // UI text (informational only)
+      const side = nextSide();
+      if (score > 0.80) meterText.textContent = `Great — capturing ${side} soon…`;
+      else if (score > 0.55) meterText.textContent = `Good — hold steady for ${side}…`;
+      else meterText.textContent = `Keep steady — filling for ${side}…`;
 
-      // when full, capture
-      if (hold >= 1 && !capturing){
-        captureNextByHold();
+      // Fill behavior:
+      // - always fills a little in normal light
+      // - fills faster as score increases
+      const fillRate = 0.010 + score * 0.030;   // per frame approx
+      const decayRate = 0.006;                  // slow decay
+
+      // if score is low but not dark, still fill slowly (so it eventually captures)
+      if (score > 0.28) setHold(hold + fillRate);
+      else setHold(hold - decayRate);
+
+      // "good enough" timer
+      if (hold >= GOOD_ENOUGH_AT) goodEnoughMs += dtMs;
+      else goodEnoughMs = 0;
+
+      // Capture rules
+      if (!capturing && (hold >= 0.999 || goodEnoughMs >= GOOD_ENOUGH_HOLD)){
+        captureNext();
       }
     }
 
@@ -1414,6 +1189,7 @@
       let outCanvas = camCanvas;
 
       if (autoCropToggle.checked){
+        const GUIDE = { x: 0.08, y: 0.06, w: 0.84, h: 0.88 };
         const x = Math.round(GUIDE.x * vw);
         const y = Math.round(GUIDE.y * vh);
         const w = Math.round(GUIDE.w * vw);
@@ -1450,15 +1226,14 @@
     snapFront?.addEventListener('click', async ()=>{
       playBurst();
       const f = await snapToFile(`grd-front-${Date.now()}.jpg`);
-      if (f){ setFrontFile(f); syncChips(); toastShow("Front captured."); setHold(0); }
+      if (f){ setFrontFile(f); syncChips(); toastShow("Front captured."); setHold(0); goodEnoughMs=0; }
     });
     snapBack?.addEventListener('click', async ()=>{
       playBurst();
       const f = await snapToFile(`grd-back-${Date.now()}.jpg`);
-      if (f){ setBackFile(f); syncChips(); toastShow("Back captured."); setHold(0); if (canGrade()) hideCamModal(); }
+      if (f){ setBackFile(f); syncChips(); toastShow("Back captured."); setHold(0); goodEnoughMs=0; if (canGrade()) hideCamModal(); }
     });
 
-    // Retake buttons open camera too
     retakeFrontBtn?.addEventListener('click', () => startCamera());
     retakeBackBtn?.addEventListener('click', () => startCamera());
 
