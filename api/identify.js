@@ -1,13 +1,4 @@
 // /api/identify.js
-// Vercel Serverless Function (Node.js runtime)
-// Identifies trading cards (Pokemon / MTG / Yu-Gi-Oh) from FRONT+BACK images
-// - Uses OpenAI vision to extract identity hints
-// - Resolves to canonical candidates via public APIs:
-//   - MTG: Scryfall
-//   - Yu-Gi-Oh: YGOPRODeck
-//   - Pokemon: PokemonTCG.io (works without key, better with POKETCG_API_KEY)
-// Returns: { extracted, candidates, debug }
-
 export const config = { runtime: "nodejs" };
 
 function json(res, status, body) {
@@ -34,17 +25,22 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-function pickBestExtract(extracted) {
-  // model may return a single object OR an array (bad). normalize to single object.
-  if (extracted && !Array.isArray(extracted)) return extracted;
+function normalizeCollectorNumber(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  if (s.includes("/")) return s.split("/")[0].trim(); // "11/108" -> "11"
+  return s;
+}
 
+function pickBestExtract(extracted) {
+  if (extracted && !Array.isArray(extracted)) return extracted;
   if (Array.isArray(extracted) && extracted.length) {
     const sorted = [...extracted].sort(
       (a, b) => Number(b?.confidence || 0) - Number(a?.confidence || 0)
     );
     return sorted[0];
   }
-
   return {
     game: "unknown",
     name: null,
@@ -57,47 +53,52 @@ function pickBestExtract(extracted) {
   };
 }
 
-function normalizeCollectorNumber(raw) {
-  if (!raw) return null;
-  const s = String(raw).trim();
-  if (!s) return null;
-  // "11/108" -> "11"
-  if (s.includes("/")) return s.split("/")[0].trim();
-  // keep as-is for yugioh like "LOB-000"
-  return s;
+function extractOutputText(respJson) {
+  // Responses API: output -> content[] with type "output_text"
+  const out = Array.isArray(respJson?.output) ? respJson.output : [];
+  const chunks = [];
+  for (const item of out) {
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const c of content) {
+      if (c?.type === "output_text" && typeof c?.text === "string") {
+        chunks.push(c.text);
+      }
+    }
+  }
+  return chunks.join("\n").trim();
 }
 
 /** ------------------------------
- * OpenAI extract (vision)
+ * OpenAI extract (Responses API)
  * ------------------------------ */
 async function openaiVisionExtract({ frontDataUrl, backDataUrl }, debug) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("Missing OPENAI_API_KEY");
 
-  const system = `You are a trading card identification assistant for: Pokemon, Magic: The Gathering, and Yu-Gi-Oh.
-Return ONLY valid JSON matching the schema. Do not include markdown.
-Return ONLY ONE best guess object (NOT an array). If multiple are possible, choose the single most likely and reduce confidence.`;
+  const systemText =
+    `You are a trading card identification assistant for: Pokemon, Magic: The Gathering, and Yu-Gi-Oh.\n` +
+    `Return ONLY valid JSON matching the schema. Do not include markdown.\n` +
+    `Return ONLY ONE best guess object (NOT an array). If multiple are possible, choose the single most likely and reduce confidence.`;
 
-  const userText = `Extract card identity fields from the provided images.
-Focus on FRONT for name, set, collector number / set code, variant (foil/holo/reverse/etched/1st edition), language, and edition markers.
-Use BACK only for game confirmation and authenticity cues.
-
-Return ONLY JSON with:
-{
-  "game": "pokemon"|"mtg"|"yugioh"|"unknown",
-  "name": string|null,
-  "set": string|null,             // set name if visible
-  "setCode": string|null,         // MTG set code; Pokemon PTCGO code if visible; Yu-Gi-Oh set code like LOB-000
-  "collectorNumber": string|null, // Pokemon/MTG number like "11/108" or "11"; or yugioh code
-  "variant": string|null,         // "holo", "reverse holo", "foil", "etched", "1st edition", etc.
-  "language": string|null,
-  "confidence": number            // 0..1
-}
-
-Rules:
-- Return ONE object only (not a list).
-- If unsure, keep fields null and lower confidence.
-- Never output commentary.`;
+  const userText =
+    `Extract card identity fields from the provided images.\n` +
+    `Focus on FRONT for name, set, collector number / set code, variant (foil/holo/reverse/etched/1st edition), language, and edition markers.\n` +
+    `Use BACK only for game confirmation and authenticity cues.\n\n` +
+    `Return ONLY JSON with:\n` +
+    `{\n` +
+    `  "game": "pokemon"|"mtg"|"yugioh"|"unknown",\n` +
+    `  "name": string|null,\n` +
+    `  "set": string|null,\n` +
+    `  "setCode": string|null,\n` +
+    `  "collectorNumber": string|null,\n` +
+    `  "variant": string|null,\n` +
+    `  "language": string|null,\n` +
+    `  "confidence": number\n` +
+    `}\n\n` +
+    `Rules:\n` +
+    `- Return ONE object only (not a list).\n` +
+    `- If unsure, keep fields null and lower confidence.\n` +
+    `- Never output commentary.`;
 
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -108,13 +109,16 @@ Rules:
     body: JSON.stringify({
       model: "gpt-4.1-mini",
       input: [
-        { role: "system", content: system },
+        {
+          role: "system",
+          content: [{ type: "input_text", text: systemText }],
+        },
         {
           role: "user",
           content: [
-            { type: "text", text: userText },
-            { type: "image_url", image_url: { url: frontDataUrl } },
-            { type: "image_url", image_url: { url: backDataUrl } },
+            { type: "input_text", text: userText },
+            { type: "input_image", image_url: frontDataUrl },
+            { type: "input_image", image_url: backDataUrl },
           ],
         },
       ],
@@ -125,23 +129,23 @@ Rules:
 
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    const msg = data?.error?.message || "OpenAI identify failed";
-    throw new Error(msg);
+    throw new Error(data?.error?.message || "OpenAI identify failed");
   }
 
-  const out = (data.output || []).flatMap((o) => o.content || []);
-  const text = out.map((c) => c.text).filter(Boolean).join("\n").trim();
+  const text = extractOutputText(data);
+  if (!text) {
+    debug.openaiRawText = null;
+    throw new Error("Identify: model returned empty output");
+  }
 
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch (e) {
-    // Helpful debug in response if needed
-    debug.openaiRawText = text?.slice?.(0, 1200) || null;
+    debug.openaiRawText = text.slice(0, 1200);
     throw new Error("Identify: model did not return valid JSON");
   }
 
-  // sanitize
   parsed = pickBestExtract(parsed);
   parsed.confidence = clamp(Number(parsed.confidence || 0), 0, 1);
   parsed.game = (parsed.game || "unknown").toLowerCase();
@@ -161,9 +165,7 @@ async function resolveMTG(extracted, debug) {
   const setCode = extracted?.setCode ? String(extracted.setCode).trim() : null;
   const collectorNumber = extracted?.collectorNumber ? String(extracted.collectorNumber).trim() : null;
 
-  const parts = [];
-  // Scryfall exact name syntax: !"Name"
-  parts.push(`!"${name.replace(/"/g, "")}"`);
+  const parts = [`!"${name.replace(/"/g, "")}"`];
   if (setCode) parts.push(`set:${setCode}`);
   if (collectorNumber) parts.push(`number:${collectorNumber}`);
 
@@ -189,11 +191,7 @@ async function resolveMTG(extracted, debug) {
     collectorNumber: String(card.collector_number || ""),
     variant: card.foil ? "foil-available" : "nonfoil",
     language: card.lang || "en",
-    canonical: {
-      provider: "scryfall",
-      id: card.id,
-      scryfall_uri: card.scryfall_uri,
-    },
+    canonical: { provider: "scryfall", id: card.id, scryfall_uri: card.scryfall_uri },
     confidence: 0.67,
   }));
 }
@@ -222,10 +220,11 @@ async function resolveYugioh(extracted, debug) {
     if (Array.isArray(c.card_sets) && c.card_sets.length) {
       if (setCode) {
         bestSet =
-          c.card_sets.find(
-            (s) => (s.set_code || "").toUpperCase() === String(setCode).toUpperCase()
-          ) || c.card_sets[0];
-      } else bestSet = c.card_sets[0];
+          c.card_sets.find((s) => (s.set_code || "").toUpperCase() === String(setCode).toUpperCase()) ||
+          c.card_sets[0];
+      } else {
+        bestSet = c.card_sets[0];
+      }
     }
 
     candidates.push({
@@ -237,28 +236,22 @@ async function resolveYugioh(extracted, debug) {
       collectorNumber: null,
       variant: bestSet?.set_rarity || null,
       language: "en",
-      canonical: {
-        provider: "ygoprodeck",
-        id: String(c.id),
-        ygo_url: c.ygoprodeck_url,
-      },
+      canonical: { provider: "ygoprodeck", id: String(c.id), ygo_url: c.ygoprodeck_url },
       confidence: 0.64,
     });
   }
   return candidates;
 }
 
-// NEW: robust Pokemon resolver (broad search + local filtering + full debug)
+// Robust Pokemon resolver (works without key, better with POKETCG_API_KEY)
 async function resolvePokemon(extracted, debug) {
-  const apiKey = process.env.POKETCG_API_KEY; // optional but recommended
+  const apiKey = process.env.POKETCG_API_KEY; // optional
   const headers = apiKey ? { "X-Api-Key": apiKey } : {};
 
   const name = extracted?.name ? String(extracted.name).trim() : "";
   if (!name) return [];
 
-  // Normalize "50/102" -> "50"
   let num = normalizeCollectorNumber(extracted?.collectorNumber);
-  // For pokemon, keep only left side if "11/108"
   if (num && num.includes("/")) num = num.split("/")[0].trim();
   if (!num) num = null;
 
@@ -273,23 +266,13 @@ async function resolvePokemon(extracted, debug) {
     const r = await fetch(url, { headers });
     const j = await r.json().catch(() => ({}));
     const count = Array.isArray(j?.data) ? j.data.length : 0;
-
-    debug.pokemon.queries.push({
-      q,
-      http: r.status,
-      count,
-    });
-
+    debug.pokemon.queries.push({ q, http: r.status, count });
     if (!r.ok) return { ok: false, data: [], err: j?.error?.message || j?.message || "PokemonTCG error" };
     return { ok: true, data: j.data || [], err: null };
   }
 
   const safeName = name.replace(/"/g, "");
-  const queries = [
-    `name:"${safeName}"`, // best starting point
-    `name:${safeName}`,
-    `name:${safeName.split(" ")[0]}`, // fallback: first token
-  ];
+  const queries = [`name:"${safeName}"`, `name:${safeName}`, `name:${safeName.split(" ")[0]}`];
 
   let data = [];
   for (const q of queries) {
@@ -298,19 +281,10 @@ async function resolvePokemon(extracted, debug) {
       data = res.data;
       break;
     }
-    if (!res.ok) {
-      // if API returns 401/403/429 etc, stop early (debug will show)
-      // still allow fallback queries if it was a transient? we stop on hard failures:
-      if (res && res.err) {
-        debug.pokemon.lastError = res.err;
-      }
-      // continue for non-ok to try other query variants
-    }
+    if (!res.ok && res.err) debug.pokemon.lastError = res.err;
   }
-
   if (!data.length) return [];
 
-  // Local ranking:
   function scoreCard(c) {
     let s = 0;
     const cNum = String(c.number || "").trim();
@@ -323,7 +297,6 @@ async function resolvePokemon(extracted, debug) {
 
   const ranked = [...data].sort((a, b) => scoreCard(b) - scoreCard(a));
 
-  // If num exists, filter exact number first
   let picked = ranked;
   if (num) {
     const exactNum = ranked.filter((c) => String(c.number || "").trim() === String(num));
@@ -339,11 +312,7 @@ async function resolvePokemon(extracted, debug) {
     collectorNumber: String(c.number || ""),
     variant: c.rarity || null,
     language: "en",
-    canonical: {
-      provider: "pokemontcg.io",
-      id: c.id,
-      image: c.images?.large || c.images?.small || null,
-    },
+    canonical: { provider: "pokemontcg.io", id: c.id, image: c.images?.large || c.images?.small || null },
     confidence: num && String(c.number || "").trim() === String(num) ? 0.9 : 0.67,
   }));
 }
@@ -399,14 +368,10 @@ export default async function handler(req, res) {
     let candidates = [];
     const game = extracted.game;
 
-    if (game === "mtg") {
-      candidates = await resolveMTG(extracted, debug);
-    } else if (game === "yugioh") {
-      candidates = await resolveYugioh(extracted, debug);
-    } else if (game === "pokemon") {
-      candidates = await resolvePokemon(extracted, debug);
-    } else {
-      // Try all, then sort
+    if (game === "mtg") candidates = await resolveMTG(extracted, debug);
+    else if (game === "yugioh") candidates = await resolveYugioh(extracted, debug);
+    else if (game === "pokemon") candidates = await resolvePokemon(extracted, debug);
+    else {
       const [m, y, p] = await Promise.all([
         resolveMTG(extracted, debug),
         resolveYugioh(extracted, debug),
@@ -415,16 +380,11 @@ export default async function handler(req, res) {
       candidates = [...m, ...y, ...p];
     }
 
-    // Boost + sort
     candidates = candidates
       .map((c) => ({ ...c, confidence: boostByMatch(extracted, c) }))
       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 
-    return json(res, 200, {
-      extracted,
-      candidates: candidates.slice(0, 6),
-      debug,
-    });
+    return json(res, 200, { extracted, candidates: candidates.slice(0, 6), debug });
   } catch (e) {
     console.error(e);
     return json(res, 500, { error: e?.message || "Identify failed" });
