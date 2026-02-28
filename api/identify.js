@@ -149,7 +149,8 @@ async function openaiVisionExtract({ frontDataUrl, backDataUrl }, debug) {
   parsed = pickBestExtract(parsed);
   parsed.confidence = clamp(Number(parsed.confidence || 0), 0, 1);
   parsed.game = (parsed.game || "unknown").toLowerCase();
-  if (!["pokemon", "mtg", "yugioh", "unknown"].includes(parsed.game)) parsed.game = "unknown";
+  if (!["pokemon", "mtg", "yugioh", "unknown"].includes(parsed.game))
+    parsed.game = "unknown";
 
   return parsed;
 }
@@ -163,14 +164,18 @@ async function resolveMTG(extracted, debug) {
   if (!name) return [];
 
   const setCode = extracted?.setCode ? String(extracted.setCode).trim() : null;
-  const collectorNumber = extracted?.collectorNumber ? String(extracted.collectorNumber).trim() : null;
+  const collectorNumber = extracted?.collectorNumber
+    ? String(extracted.collectorNumber).trim()
+    : null;
 
   const parts = [`!"${name.replace(/"/g, "")}"`];
   if (setCode) parts.push(`set:${setCode}`);
   if (collectorNumber) parts.push(`number:${collectorNumber}`);
 
   const q = parts.join(" ").trim();
-  const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=prints&order=released`;
+  const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(
+    q
+  )}&unique=prints&order=released`;
 
   debug.mtg = debug.mtg || {};
   debug.mtg.query = q;
@@ -191,7 +196,11 @@ async function resolveMTG(extracted, debug) {
     collectorNumber: String(card.collector_number || ""),
     variant: card.foil ? "foil-available" : "nonfoil",
     language: card.lang || "en",
-    canonical: { provider: "scryfall", id: card.id, scryfall_uri: card.scryfall_uri },
+    canonical: {
+      provider: "scryfall",
+      id: card.id,
+      scryfall_uri: card.scryfall_uri,
+    },
     confidence: 0.67,
   }));
 }
@@ -202,7 +211,9 @@ async function resolveYugioh(extracted, debug) {
   if (!name && !setCode) return [];
 
   const query = name || setCode;
-  const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(query)}`;
+  const url = `https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(
+    query
+  )}`;
 
   debug.yugioh = debug.yugioh || {};
   debug.yugioh.query = query;
@@ -220,8 +231,11 @@ async function resolveYugioh(extracted, debug) {
     if (Array.isArray(c.card_sets) && c.card_sets.length) {
       if (setCode) {
         bestSet =
-          c.card_sets.find((s) => (s.set_code || "").toUpperCase() === String(setCode).toUpperCase()) ||
-          c.card_sets[0];
+          c.card_sets.find(
+            (s) =>
+              (s.set_code || "").toUpperCase() ===
+              String(setCode).toUpperCase()
+          ) || c.card_sets[0];
       } else {
         bestSet = c.card_sets[0];
       }
@@ -236,14 +250,24 @@ async function resolveYugioh(extracted, debug) {
       collectorNumber: null,
       variant: bestSet?.set_rarity || null,
       language: "en",
-      canonical: { provider: "ygoprodeck", id: String(c.id), ygo_url: c.ygoprodeck_url },
+      canonical: {
+        provider: "ygoprodeck",
+        id: String(c.id),
+        ygo_url: c.ygoprodeck_url,
+      },
       confidence: 0.64,
     });
   }
   return candidates;
 }
 
-// Robust Pokemon resolver (works without key, better with POKETCG_API_KEY)
+/**
+ * ✅ UPDATED Pokemon resolver:
+ * - Uses POKETCG_API_KEY if present
+ * - Adds timeout + retry
+ * - Smaller pageSize to avoid 504
+ * - Better query ladder: name+number+set -> name+number -> name+set -> name exact -> name broad
+ */
 async function resolvePokemon(extracted, debug) {
   const apiKey = process.env.POKETCG_API_KEY; // optional
   const headers = apiKey ? { "X-Api-Key": apiKey } : {};
@@ -251,28 +275,72 @@ async function resolvePokemon(extracted, debug) {
   const name = extracted?.name ? String(extracted.name).trim() : "";
   if (!name) return [];
 
-  let num = normalizeCollectorNumber(extracted?.collectorNumber);
-  if (num && num.includes("/")) num = num.split("/")[0].trim();
-  if (!num) num = null;
-
+  const num = normalizeCollectorNumber(extracted?.collectorNumber);
   const setName = extracted?.set ? String(extracted.set).trim() : null;
 
   debug.pokemon = debug.pokemon || {};
   debug.pokemon.apiKeyPresent = !!apiKey;
   debug.pokemon.queries = debug.pokemon.queries || [];
 
+  async function fetchWithTimeout(url, opts = {}, timeoutMs = 12000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...opts, signal: ctrl.signal });
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
   async function pokeFetch(q) {
-    const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=250`;
-    const r = await fetch(url, { headers });
-    const j = await r.json().catch(() => ({}));
-    const count = Array.isArray(j?.data) ? j.data.length : 0;
-    debug.pokemon.queries.push({ q, http: r.status, count });
-    if (!r.ok) return { ok: false, data: [], err: j?.error?.message || j?.message || "PokemonTCG error" };
-    return { ok: true, data: j.data || [], err: null };
+    const url = `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(
+      q
+    )}&pageSize=60`;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetchWithTimeout(url, { headers }, 12000);
+        const j = await r.json().catch(() => ({}));
+        const count = Array.isArray(j?.data) ? j.data.length : 0;
+
+        debug.pokemon.queries.push({ q, http: r.status, count });
+
+        if (!r.ok) {
+          const retryable =
+            r.status === 429 || (r.status >= 500 && r.status < 600);
+          if (retryable && attempt === 0) continue;
+
+          debug.pokemon.lastError =
+            j?.error?.message || j?.message || `HTTP ${r.status}`;
+          return { ok: false, data: [] };
+        }
+
+        return { ok: true, data: j.data || [] };
+      } catch (e) {
+        debug.pokemon.queries.push({
+          q,
+          http: "FETCH_ERR",
+          error: String(e?.message || e),
+        });
+        if (attempt === 0) continue;
+        debug.pokemon.lastError = String(e?.message || e);
+        return { ok: false, data: [] };
+      }
+    }
+
+    return { ok: false, data: [] };
   }
 
   const safeName = name.replace(/"/g, "");
-  const queries = [`name:"${safeName}"`, `name:${safeName}`, `name:${safeName.split(" ")[0]}`];
+  const safeSet = setName ? setName.replace(/"/g, "") : null;
+
+  const queries = [];
+  if (safeName && num && safeSet)
+    queries.push(`name:"${safeName}" set.name:"${safeSet}" number:"${num}"`);
+  if (safeName && num) queries.push(`name:"${safeName}" number:"${num}"`);
+  if (safeName && safeSet) queries.push(`name:"${safeName}" set.name:"${safeSet}"`);
+  if (safeName) queries.push(`name:"${safeName}"`);
+  if (safeName) queries.push(`name:${safeName}`);
 
   let data = [];
   for (const q of queries) {
@@ -281,8 +349,8 @@ async function resolvePokemon(extracted, debug) {
       data = res.data;
       break;
     }
-    if (!res.ok && res.err) debug.pokemon.lastError = res.err;
   }
+
   if (!data.length) return [];
 
   function scoreCard(c) {
@@ -290,8 +358,8 @@ async function resolvePokemon(extracted, debug) {
     const cNum = String(c.number || "").trim();
     const cSet = String(c.set?.name || "");
     if (num && cNum === String(num)) s += 10;
-    if (setName && cSet.toLowerCase().includes(setName.toLowerCase())) s += 3;
-    if ((cSet || "").length) s += 1;
+    if (setName && cSet.toLowerCase().includes(setName.toLowerCase())) s += 4;
+    if (cSet) s += 1;
     return s;
   }
 
@@ -299,7 +367,9 @@ async function resolvePokemon(extracted, debug) {
 
   let picked = ranked;
   if (num) {
-    const exactNum = ranked.filter((c) => String(c.number || "").trim() === String(num));
+    const exactNum = ranked.filter(
+      (c) => String(c.number || "").trim() === String(num)
+    );
     if (exactNum.length) picked = exactNum;
   }
 
@@ -312,22 +382,35 @@ async function resolvePokemon(extracted, debug) {
     collectorNumber: String(c.number || ""),
     variant: c.rarity || null,
     language: "en",
-    canonical: { provider: "pokemontcg.io", id: c.id, image: c.images?.large || c.images?.small || null },
-    confidence: num && String(c.number || "").trim() === String(num) ? 0.9 : 0.67,
+    canonical: {
+      provider: "pokemontcg.io",
+      id: c.id,
+      image: c.images?.large || c.images?.small || null,
+    },
+    confidence:
+      num && String(c.number || "").trim() === String(num) ? 0.9 : 0.7,
   }));
 }
 
 function boostByMatch(extracted, cand) {
   let score = cand.confidence || 0.5;
 
-  const exSetCode = extracted?.setCode ? String(extracted.setCode).toLowerCase() : null;
+  const exSetCode = extracted?.setCode
+    ? String(extracted.setCode).toLowerCase()
+    : null;
   const exSet = extracted?.set ? String(extracted.set).toLowerCase() : null;
-  const exNum = extracted?.collectorNumber ? String(normalizeCollectorNumber(extracted.collectorNumber)).toLowerCase() : null;
-  const exVar = extracted?.variant ? String(extracted.variant).toLowerCase() : null;
+  const exNum = extracted?.collectorNumber
+    ? String(normalizeCollectorNumber(extracted.collectorNumber)).toLowerCase()
+    : null;
+  const exVar = extracted?.variant
+    ? String(extracted.variant).toLowerCase()
+    : null;
 
   const cSetCode = cand?.setCode ? String(cand.setCode).toLowerCase() : null;
   const cSet = cand?.set ? String(cand.set).toLowerCase() : null;
-  const cNum = cand?.collectorNumber ? String(normalizeCollectorNumber(cand.collectorNumber)).toLowerCase() : null;
+  const cNum = cand?.collectorNumber
+    ? String(normalizeCollectorNumber(cand.collectorNumber)).toLowerCase()
+    : null;
   const cVar = cand?.variant ? String(cand.variant).toLowerCase() : null;
 
   if (exSetCode && cSetCode && exSetCode === cSetCode) score += 0.18;
@@ -343,7 +426,8 @@ function boostByMatch(extracted, cand) {
  * ------------------------------ */
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
+    if (req.method !== "POST")
+      return json(res, 405, { error: "Method not allowed" });
 
     const { frontDataUrl, backDataUrl } = await readBody(req);
     if (!frontDataUrl || !backDataUrl) {
@@ -359,7 +443,10 @@ export default async function handler(req, res) {
       openaiRawText: null,
     };
 
-    const extracted = await openaiVisionExtract({ frontDataUrl, backDataUrl }, debug);
+    const extracted = await openaiVisionExtract(
+      { frontDataUrl, backDataUrl },
+      debug
+    );
 
     extracted.collectorNumber = normalizeCollectorNumber(extracted.collectorNumber);
     debug.normalizedCollectorNumber = extracted.collectorNumber || null;
@@ -384,7 +471,11 @@ export default async function handler(req, res) {
       .map((c) => ({ ...c, confidence: boostByMatch(extracted, c) }))
       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
 
-    return json(res, 200, { extracted, candidates: candidates.slice(0, 6), debug });
+    return json(res, 200, {
+      extracted,
+      candidates: candidates.slice(0, 6),
+      debug,
+    });
   } catch (e) {
     console.error(e);
     return json(res, 500, { error: e?.message || "Identify failed" });
