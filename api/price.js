@@ -1,4 +1,3 @@
-// /api/price.js
 export const config = { runtime: "nodejs" };
 
 function json(res, status, body){
@@ -19,9 +18,9 @@ async function readBody(req){
 
 function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
 
-// Conservative uplift curve (tune later)
+// --- Conservative uplift curve (tune later) ---
 function upliftMultiplier(grade){
-  if (grade >= 10)  return 3.0;
+  if (grade >= 10) return 3.0;
   if (grade >= 9.5) return 1.9;
   if (grade >= 9.0) return 1.35;
   if (grade >= 8.5) return 1.12;
@@ -29,42 +28,15 @@ function upliftMultiplier(grade){
   return 1.02;
 }
 
-async function fetchWithTimeout(url, options = {}, ms = 12000){
-  const ctrl = new AbortController();
-  const t = setTimeout(()=> ctrl.abort(), ms);
-  try{
-    const r = await fetch(url, { ...options, signal: ctrl.signal });
-    return r;
-  } finally {
-    clearTimeout(t);
-  }
+// --- FX via your /api/fx (ECB-backed) ---
+async function getFX(){
+  const base = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "";
+  const r = await fetch(`${base}/api/fx`);
+  const j = await r.json().catch(()=> ({}));
+  if (!r.ok) throw new Error(j?.error || "FX failed");
+  return j; // { base:"EUR", GBP:x, USD:y }
 }
 
-// --- ECB FX (EUR base) ---
-// Returns { base:"EUR", GBP:number, USD:number, EUR:1 }
-async function getFX_ECB(){
-  // ECB “eurofxref-daily.xml”
-  const url = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
-  const r = await fetchWithTimeout(url, {}, 12000);
-  const xml = await r.text();
-
-  if (!r.ok || !xml) throw new Error("FX failed");
-
-  // Minimal XML parsing (no deps). We only need USD + GBP.
-  const readRate = (ccy) => {
-    const re = new RegExp(`currency=['"]${ccy}['"]\\s+rate=['"]([^'"]+)['"]`, "i");
-    const m = xml.match(re);
-    return m ? Number(m[1]) : null;
-  };
-
-  const USD = readRate("USD");
-  const GBP = readRate("GBP");
-  if (!USD || !GBP) throw new Error("FX parse failed");
-
-  return { base:"EUR", EUR: 1, USD, GBP };
-}
-
-// Convert between currencies using ECB rates (EUR base).
 function convert(amount, from, to, rates){
   if (amount == null || !isFinite(amount)) return null;
   if (from === to) return amount;
@@ -82,115 +54,150 @@ function convert(amount, from, to, rates){
     return amt;
   };
 
-  const eur = toEUR(amount, from);
-  return fromEUR(eur, to);
+  return fromEUR(toEUR(amount, from), to);
 }
 
-// --- JustTCG (primary) ---
-// Uses /v1/cards search. Price is in variants[].price.  [oai_citation:3‡JustTCG](https://justtcg.com/docs)
-// NOTE: JustTCG prices are typically tied to their underlying market source (often USD-like).
-async function justTCGPrice(card, debug){
+// --------------------
+// JustTCG helpers
+// --------------------
+function justtcgHeaders(){
   const apiKey = process.env.JUSTTCG_API_KEY;
   if (!apiKey) return null;
+  return {
+    "x-api-key": apiKey,
+    "accept": "application/json"
+  };
+}
 
-  const gameRaw = String(card.game || "").toLowerCase();
-  const game =
-    gameRaw === "pokemon" ? "Pokemon" :
-    gameRaw === "mtg" ? "Magic" :
-    gameRaw === "yugioh" ? "YuGiOh" :
-    null;
+function normalizeGame(game){
+  const g = String(game || "").toLowerCase();
+  if (g === "mtg") return "mtg";
+  if (g === "yugioh") return "yugioh";
+  if (g === "pokemon") return "pokemon";
+  return null;
+}
 
-  // Build a strong query:
-  // name + set + number helps a lot
-  const qParts = [];
-  if (card.name) qParts.push(String(card.name));
-  if (card.set) qParts.push(String(card.set));
-  if (card.collectorNumber) qParts.push(String(card.collectorNumber));
+// Pick a set id from /v1/sets search
+async function justTCGResolveSetId({ game, setName }, debug){
+  if (!setName) return null;
+  const headers = justtcgHeaders();
+  if (!headers) return null;
+
+  const url = `https://api.justtcg.com/v1/sets?q=${encodeURIComponent(setName)}&game=${encodeURIComponent(game)}&limit=10`;
+  debug.justtcg.setLookup = { url };
+
+  const r = await fetch(url, { headers });
+  const j = await r.json().catch(()=> ({}));
+  debug.justtcg.setLookup.http = r.status;
+
+  const arr = Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []);
+  debug.justtcg.setLookup.count = arr.length;
+
+  if (!r.ok || !arr.length) return null;
+
+  // heuristic: closest name match first
+  const sn = String(setName).toLowerCase();
+  const best = [...arr].sort((a,b)=>{
+    const an = String(a?.name || "").toLowerCase();
+    const bn = String(b?.name || "").toLowerCase();
+    const as = an.includes(sn) ? 2 : 0;
+    const bs = bn.includes(sn) ? 2 : 0;
+    return bs - as;
+  })[0];
+
+  // Docs describe "id" for games; sets typically have an id/slug too.
+  return best?.id || best?.setId || best?.slug || null;
+}
+
+// Fetch a price from /v1/cards
+async function justTCGPrice(card, debug){
+  const headers = justtcgHeaders();
+  if (!headers) return null;
+
+  const game = normalizeGame(card?.game);
+  if (!game) return null;
+
+  const name = String(card?.name || "").trim();
+  if (!name) return null;
+
+  // Resolve set id if we have a set name
+  const setName = card?.set ? String(card.set).trim() : null;
+  const setId = await justTCGResolveSetId({ game, setName }, debug);
+
+  const qParts = [name];
+  // collector number can help, but not all datasets index it consistently; keep it light
+  if (card?.collectorNumber) qParts.push(String(card.collectorNumber).trim());
+
   const q = qParts.join(" ").trim();
-  if (!q) return null;
 
-  // Prefer NM + Normal to approximate “raw NM”
-  // JustTCG supports condition & printing filters.  [oai_citation:4‡JustTCG](https://justtcg.com/docs)
+  // Use the endpoint style from JustTCG docs/blog: /v1/cards with q + game + set
   const params = new URLSearchParams();
   params.set("q", q);
-  if (game) params.set("game", game);
+  params.set("game", game);
+  if (setId) params.set("set", setId);
   params.set("condition", "NM");
-  params.set("printing", "Normal");
-  params.set("include_price_history", "false");
-  params.set("include_statistics", "30d");
+  params.set("limit", "10");
 
   const url = `https://api.justtcg.com/v1/cards?${params.toString()}`;
 
-  debug.justtcg = { url, q, game };
+  debug.justtcg.cards = { url, q, game, setId };
 
-  const r = await fetchWithTimeout(url, {
-    headers: {
-      "X-Api-Key": apiKey,
-      "Accept": "application/json"
-    }
-  }, 12000);
-
+  const r = await fetch(url, { headers });
   const j = await r.json().catch(()=> ({}));
-  debug.justtcg.http = r.status;
+  debug.justtcg.cards.http = r.status;
 
-  if (!r.ok) {
-    debug.justtcg.error = j?.error || j?.message || `HTTP ${r.status}`;
+  const items = Array.isArray(j?.data) ? j.data : [];
+  debug.justtcg.cards.count = items.length;
+
+  if (!r.ok || !items.length) return null;
+
+  // Try to find a numeric price field (provider-dependent). Common pattern is cents.
+  function getPrice(x){
+    const cents =
+      x?.market_price_cents ??
+      x?.marketPriceCents ??
+      x?.price_cents ??
+      x?.priceCents ??
+      null;
+
+    if (isFinite(Number(cents))) return Number(cents) / 100;
+
+    const p =
+      x?.market_price ??
+      x?.marketPrice ??
+      x?.price ??
+      x?.avg_price ??
+      null;
+
+    if (isFinite(Number(p))) return Number(p);
+
     return null;
   }
 
-  const cards = Array.isArray(j?.data) ? j.data : [];
-  debug.justtcg.count = cards.length;
+  // Choose first item with a price
+  let chosen = null;
+  let raw = null;
+  for (const it of items){
+    const p = getPrice(it);
+    if (p != null){
+      chosen = it;
+      raw = p;
+      break;
+    }
+  }
+  if (!chosen || raw == null) return null;
 
-  if (!cards.length) return null;
-
-  // Pick best match by:
-  // exact number match > set match > first result
-  const wantNum = card.collectorNumber ? String(card.collectorNumber).trim() : null;
-  const wantSet = card.set ? String(card.set).toLowerCase() : null;
-
-  const score = (c) => {
-    let s = 0;
-    const n = String(c.number || "").trim();
-    const setName = String(c.set_name || c.set || "").toLowerCase();
-    if (wantNum && n === wantNum) s += 10;
-    if (wantSet && setName.includes(wantSet)) s += 4;
-    if (setName) s += 1;
-    return s;
-  };
-
-  const bestCard = [...cards].sort((a,b)=>score(b)-score(a))[0];
-  const variants = Array.isArray(bestCard?.variants) ? bestCard.variants : [];
-  if (!variants.length) return null;
-
-  // We requested NM+Normal filtering — but if API ignores filter on some plans,
-  // still pick the best candidate:
-  const preferred = variants.find(v =>
-    String(v.condition || "").toLowerCase().includes("near") &&
-    String(v.printing || "").toLowerCase() === "normal" &&
-    isFinite(Number(v.price))
-  ) || variants.find(v => isFinite(Number(v.price)));
-
-  if (!preferred) return null;
-
-  const raw = Number(preferred.price);
-  if (!isFinite(raw)) return null;
-
-  // JustTCG doesn’t include explicit currency in the card object example;
-  // most integrations treat it as USD-like market price.
-  // If your JustTCG plan provides currency elsewhere, wire it in here.
-  const currency = "USD";
+  // Currency is typically included; if not, assume EUR (EU-leaning).
+  const currency = chosen?.currency || "EUR";
 
   return {
     source: "JustTCG",
     currency,
     raw,
-    picked: {
-      cardId: bestCard.id,
-      set_name: bestCard.set_name || null,
-      number: bestCard.number || null,
-      variantId: preferred.id || null,
-      condition: preferred.condition || null,
-      printing: preferred.printing || null
+    matched: {
+      name: chosen?.name || chosen?.card_name || null,
+      set: chosen?.set?.name || chosen?.set_name || null,
+      id: chosen?.variantId || chosen?.id || null
     }
   };
 }
@@ -202,9 +209,10 @@ export default async function handler(req, res){
     const { card, distribution, feeGBP } = await readBody(req);
     if (!card?.game || !card?.name) return json(res, 400, { error: "Missing card" });
 
-    const debug = {};
+    const debug = { justtcg: {} };
 
     const live = await justTCGPrice(card, debug);
+
     if (!live){
       return json(res, 200, {
         source: null,
@@ -215,7 +223,6 @@ export default async function handler(req, res){
       });
     }
 
-    // Compute EV graded using distribution + uplift curve on RAW
     const dist = Array.isArray(distribution) && distribution.length
       ? distribution
       : [
@@ -226,19 +233,14 @@ export default async function handler(req, res){
         ];
 
     let evGraded = 0;
-    let sumProb = 0;
     for (const g of dist){
       const grade = clamp(Number(g.grade||9), 1, 10);
       const prob  = Math.max(0, Number(g.prob||0));
-      sumProb += prob;
       evGraded += prob * (live.raw * upliftMultiplier(grade));
     }
-    if (sumProb > 0 && Math.abs(sumProb - 1) > 0.01) {
-      // normalize if needed
-      evGraded = evGraded / sumProb;
-    }
 
-    const fx = await getFX_ECB();
+    const fx = await getFX();
+    const fee = isFinite(Number(feeGBP)) ? Number(feeGBP) : 15;
 
     const out = {
       source: live.source,
@@ -247,22 +249,20 @@ export default async function handler(req, res){
       evGraded,
       upliftModel: "conservative",
       fx: { base: fx.base, GBP: fx.GBP, USD: fx.USD },
-      picked: live.picked || null,
       converted: {},
+      matched: live.matched || null,
       debug
     };
 
-    const fee = isFinite(Number(feeGBP)) ? Number(feeGBP) : 15;
-
     for (const ccy of ["GBP","EUR","USD"]){
-      const rawC = convert(live.raw, live.currency, ccy, fx);
-      const evC  = convert(evGraded, live.currency, ccy, fx);
-      const feeC = convert(fee, "GBP", ccy, fx);
-      out.converted[ccy] = { raw: rawC, evGraded: evC, fee: feeC };
+      out.converted[ccy] = {
+        raw: convert(live.raw, live.currency, ccy, fx),
+        evGraded: convert(evGraded, live.currency, ccy, fx),
+        fee: convert(fee, "GBP", ccy, fx)
+      };
     }
 
     return json(res, 200, out);
-
   } catch (e){
     console.error(e);
     return json(res, 500, { error: e.message || "Pricing failed" });
