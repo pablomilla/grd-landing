@@ -1,3 +1,4 @@
+// /api/price.js
 export const config = { runtime: "nodejs" };
 
 function json(res, status, body){
@@ -19,11 +20,8 @@ async function readBody(req){
 function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
 
 // Conservative uplift curve (tune later)
-// These are multipliers on RAW value to estimate graded value.
-// You can replace later with real graded comps per grade.
 function upliftMultiplier(grade){
-  // grade increments of 0.5
-  if (grade >= 10) return 3.0;
+  if (grade >= 10)  return 3.0;
   if (grade >= 9.5) return 1.9;
   if (grade >= 9.0) return 1.35;
   if (grade >= 8.5) return 1.12;
@@ -31,24 +29,46 @@ function upliftMultiplier(grade){
   return 1.02;
 }
 
-async function getFX(){
-  const r = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ""}/api/fx`);
-  // Above works on Vercel; locally you can just fetch the ECB URL directly or set VERCEL_URL
-  const j = await r.json().catch(()=> ({}));
-  if (!r.ok) throw new Error(j?.error || "FX failed");
-  return j; // {base:"EUR", GBP:x, USD:y}
+async function fetchWithTimeout(url, options = {}, ms = 12000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=> ctrl.abort(), ms);
+  try{
+    const r = await fetch(url, { ...options, signal: ctrl.signal });
+    return r;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// --- ECB FX (EUR base) ---
+// Returns { base:"EUR", GBP:number, USD:number, EUR:1 }
+async function getFX_ECB(){
+  // ECB “eurofxref-daily.xml”
+  const url = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
+  const r = await fetchWithTimeout(url, {}, 12000);
+  const xml = await r.text();
+
+  if (!r.ok || !xml) throw new Error("FX failed");
+
+  // Minimal XML parsing (no deps). We only need USD + GBP.
+  const readRate = (ccy) => {
+    const re = new RegExp(`currency=['"]${ccy}['"]\\s+rate=['"]([^'"]+)['"]`, "i");
+    const m = xml.match(re);
+    return m ? Number(m[1]) : null;
+  };
+
+  const USD = readRate("USD");
+  const GBP = readRate("GBP");
+  if (!USD || !GBP) throw new Error("FX parse failed");
+
+  return { base:"EUR", EUR: 1, USD, GBP };
 }
 
 // Convert between currencies using ECB rates (EUR base).
-// rates: {base:"EUR", GBP, USD}
 function convert(amount, from, to, rates){
   if (amount == null || !isFinite(amount)) return null;
   if (from === to) return amount;
 
-  // Build EUR conversion
-  // If from is EUR: EUR->to uses rate directly
-  // If from is GBP: GBP->EUR = amount / GBP (since GBP = EUR*rateGBP)
-  // If from is USD: USD->EUR = amount / USD
   const toEUR = (amt, ccy) => {
     if (ccy === "EUR") return amt;
     if (ccy === "GBP") return amt / rates.GBP;
@@ -67,48 +87,112 @@ function convert(amount, from, to, rates){
 }
 
 // --- JustTCG (primary) ---
-// NOTE: You must adapt endpoints to your JustTCG plan.
-// This function is written to be easy to edit.
-// If you paste your JustTCG endpoint format later, you can change it here only.
-async function justTCGPrice(card){
+// Uses /v1/cards search. Price is in variants[].price.  [oai_citation:3‡JustTCG](https://justtcg.com/docs)
+// NOTE: JustTCG prices are typically tied to their underlying market source (often USD-like).
+async function justTCGPrice(card, debug){
   const apiKey = process.env.JUSTTCG_API_KEY;
   if (!apiKey) return null;
 
-  // We send a fuzzy query; best practice is: name + setCode/number when possible.
-  // Many TCG price providers accept a query string.
-  const qParts = [];
-  if (card.name) qParts.push(card.name);
-  if (card.set) qParts.push(card.set);
-  if (card.collectorNumber) qParts.push(`#${card.collectorNumber}`);
-  const q = qParts.join(" ").trim();
+  const gameRaw = String(card.game || "").toLowerCase();
+  const game =
+    gameRaw === "pokemon" ? "Pokemon" :
+    gameRaw === "mtg" ? "Magic" :
+    gameRaw === "yugioh" ? "YuGiOh" :
+    null;
 
+  // Build a strong query:
+  // name + set + number helps a lot
+  const qParts = [];
+  if (card.name) qParts.push(String(card.name));
+  if (card.set) qParts.push(String(card.set));
+  if (card.collectorNumber) qParts.push(String(card.collectorNumber));
+  const q = qParts.join(" ").trim();
   if (!q) return null;
 
-  // Placeholder: replace with your JustTCG endpoint.
-  // Example shape assumed: {currency:"EUR", market: number}
-  const url = `https://api.justtcg.com/v1/prices/search?q=${encodeURIComponent(q)}&limit=1`;
+  // Prefer NM + Normal to approximate “raw NM”
+  // JustTCG supports condition & printing filters.  [oai_citation:4‡JustTCG](https://justtcg.com/docs)
+  const params = new URLSearchParams();
+  params.set("q", q);
+  if (game) params.set("game", game);
+  params.set("condition", "NM");
+  params.set("printing", "Normal");
+  params.set("include_price_history", "false");
+  params.set("include_statistics", "30d");
 
-  const r = await fetch(url, {
+  const url = `https://api.justtcg.com/v1/cards?${params.toString()}`;
+
+  debug.justtcg = { url, q, game };
+
+  const r = await fetchWithTimeout(url, {
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
+      "X-Api-Key": apiKey,
       "Accept": "application/json"
     }
-  });
+  }, 12000);
 
   const j = await r.json().catch(()=> ({}));
-  if (!r.ok) return null;
+  debug.justtcg.http = r.status;
 
-  // Attempt to pick a best price field:
-  const item = Array.isArray(j.data) ? j.data[0] : (j.data || j.result || null);
-  if (!item) return null;
+  if (!r.ok) {
+    debug.justtcg.error = j?.error || j?.message || `HTTP ${r.status}`;
+    return null;
+  }
 
-  const currency = item.currency || "EUR";
-  const raw =
-    Number(item.market ?? item.price ?? item.avg ?? item.low ?? item.mid ?? item.eur ?? item.gbp ?? item.usd);
+  const cards = Array.isArray(j?.data) ? j.data : [];
+  debug.justtcg.count = cards.length;
 
+  if (!cards.length) return null;
+
+  // Pick best match by:
+  // exact number match > set match > first result
+  const wantNum = card.collectorNumber ? String(card.collectorNumber).trim() : null;
+  const wantSet = card.set ? String(card.set).toLowerCase() : null;
+
+  const score = (c) => {
+    let s = 0;
+    const n = String(c.number || "").trim();
+    const setName = String(c.set_name || c.set || "").toLowerCase();
+    if (wantNum && n === wantNum) s += 10;
+    if (wantSet && setName.includes(wantSet)) s += 4;
+    if (setName) s += 1;
+    return s;
+  };
+
+  const bestCard = [...cards].sort((a,b)=>score(b)-score(a))[0];
+  const variants = Array.isArray(bestCard?.variants) ? bestCard.variants : [];
+  if (!variants.length) return null;
+
+  // We requested NM+Normal filtering — but if API ignores filter on some plans,
+  // still pick the best candidate:
+  const preferred = variants.find(v =>
+    String(v.condition || "").toLowerCase().includes("near") &&
+    String(v.printing || "").toLowerCase() === "normal" &&
+    isFinite(Number(v.price))
+  ) || variants.find(v => isFinite(Number(v.price)));
+
+  if (!preferred) return null;
+
+  const raw = Number(preferred.price);
   if (!isFinite(raw)) return null;
 
-  return { source: "JustTCG", currency, raw };
+  // JustTCG doesn’t include explicit currency in the card object example;
+  // most integrations treat it as USD-like market price.
+  // If your JustTCG plan provides currency elsewhere, wire it in here.
+  const currency = "USD";
+
+  return {
+    source: "JustTCG",
+    currency,
+    raw,
+    picked: {
+      cardId: bestCard.id,
+      set_name: bestCard.set_name || null,
+      number: bestCard.number || null,
+      variantId: preferred.id || null,
+      condition: preferred.condition || null,
+      printing: preferred.printing || null
+    }
+  };
 }
 
 export default async function handler(req, res){
@@ -118,15 +202,16 @@ export default async function handler(req, res){
     const { card, distribution, feeGBP } = await readBody(req);
     if (!card?.game || !card?.name) return json(res, 400, { error: "Missing card" });
 
-    // Fetch raw live price (EU/UK leaning via JustTCG)
-    const live = await justTCGPrice(card);
+    const debug = {};
 
+    const live = await justTCGPrice(card, debug);
     if (!live){
       return json(res, 200, {
         source: null,
         raw: null,
         currency: null,
-        note: "Live pricing unavailable. Use manual raw override."
+        note: "Live pricing unavailable. Use manual raw override.",
+        debug
       });
     }
 
@@ -141,15 +226,19 @@ export default async function handler(req, res){
         ];
 
     let evGraded = 0;
+    let sumProb = 0;
     for (const g of dist){
       const grade = clamp(Number(g.grade||9), 1, 10);
       const prob  = Math.max(0, Number(g.prob||0));
+      sumProb += prob;
       evGraded += prob * (live.raw * upliftMultiplier(grade));
     }
+    if (sumProb > 0 && Math.abs(sumProb - 1) > 0.01) {
+      // normalize if needed
+      evGraded = evGraded / sumProb;
+    }
 
-    // FX conversion (EUR base from ECB)
-    // NOTE: live.currency could be EUR/USD/GBP; we convert to GBP/EUR/USD outputs
-    const fx = await getFX();
+    const fx = await getFX_ECB();
 
     const out = {
       source: live.source,
@@ -158,21 +247,18 @@ export default async function handler(req, res){
       evGraded,
       upliftModel: "conservative",
       fx: { base: fx.base, GBP: fx.GBP, USD: fx.USD },
-      converted: {}
+      picked: live.picked || null,
+      converted: {},
+      debug
     };
 
     const fee = isFinite(Number(feeGBP)) ? Number(feeGBP) : 15;
 
-    // Always provide converted outputs for GBP/EUR/USD
     for (const ccy of ["GBP","EUR","USD"]){
       const rawC = convert(live.raw, live.currency, ccy, fx);
       const evC  = convert(evGraded, live.currency, ccy, fx);
       const feeC = convert(fee, "GBP", ccy, fx);
-      out.converted[ccy] = {
-        raw: rawC,
-        evGraded: evC,
-        fee: feeC
-      };
+      out.converted[ccy] = { raw: rawC, evGraded: evC, fee: feeC };
     }
 
     return json(res, 200, out);
