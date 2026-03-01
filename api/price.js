@@ -25,50 +25,44 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-async function fetchWithTimeout(url, opts = {}, timeoutMs = 9000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...opts, signal: controller.signal });
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-function safeLower(x) {
-  return String(x || "").trim().toLowerCase();
-}
-
 // ---------- FX (ECB) ----------
+// ECB publishes EUR base rates in XML.
 async function getFX(debug) {
   const url = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
   debug.fx = debug.fx || {};
   debug.fx.url = url;
 
-  const r = await fetchWithTimeout(url, {}, 9000);
-  debug.fx.http = r.status;
-  if (!r.ok) throw new Error(`ECB FX HTTP ${r.status}`);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 9000);
 
-  const xml = await r.text();
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    debug.fx.http = r.status;
+    if (!r.ok) throw new Error(`ECB FX HTTP ${r.status}`);
 
-  const pick = (ccy) => {
-    const re = new RegExp(`currency=['"]${ccy}['"]\\s+rate=['"]([0-9.]+)['"]`, "i");
-    const m = xml.match(re);
-    return m ? Number(m[1]) : null;
-  };
+    const xml = await r.text();
 
-  const USD = pick("USD");
-  const GBP = pick("GBP");
-  if (!USD || !GBP) throw new Error("ECB FX parse failed");
+    // Small XML parse via regex: <Cube currency='USD' rate='1.0'/>
+    const pick = (ccy) => {
+      const re = new RegExp(`currency=['"]${ccy}['"]\\s+rate=['"]([0-9.]+)['"]`, "i");
+      const m = xml.match(re);
+      return m ? Number(m[1]) : null;
+    };
 
-  return { base: "EUR", USD, GBP };
+    const USD = pick("USD");
+    const GBP = pick("GBP");
+
+    if (!USD || !GBP) throw new Error("ECB FX parse failed");
+
+    return { base: "EUR", USD, GBP };
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 // Convert between currencies using ECB rates (EUR base).
 function convert(amount, from, to, rates) {
   if (amount == null || !isFinite(amount)) return null;
-  from = (from || "EUR").toUpperCase();
-  to = (to || "EUR").toUpperCase();
   if (from === to) return amount;
 
   const toEUR = (amt, ccy) => {
@@ -84,10 +78,11 @@ function convert(amount, from, to, rates) {
     return amt;
   };
 
-  return fromEUR(toEUR(amount, from), to);
+  const eur = toEUR(amount, from);
+  return fromEUR(eur, to);
 }
 
-// ---------- ROI uplift model (placeholder) ----------
+// ---------- ROI uplift model (placeholder; tune later) ----------
 function upliftMultiplier(grade) {
   if (grade >= 10) return 3.0;
   if (grade >= 9.5) return 1.9;
@@ -97,135 +92,191 @@ function upliftMultiplier(grade) {
   return 1.02;
 }
 
-// ---------- JustTCG ----------
-const JUSTTCG_BASE = "https://api.justtcg.com/v1";
-
-// IMPORTANT: your plan limit (from your error): 1..20
-const PLAN_LIMIT = 20;
-
+// ---------- JustTCG helpers ----------
 function toJustTCGGameId(game) {
-  const g = safeLower(game);
+  const g = String(game || "").toLowerCase();
   if (g === "pokemon") return "pokemon";
-  if (g === "mtg" || g.includes("magic")) return "mtg";
-  if (g === "yugioh" || g.includes("yu")) return "yugioh";
+  if (g === "mtg" || g.includes("magic")) return "magic-the-gathering";
+  if (g === "yugioh" || g.includes("yu")) return "yu-gi-oh";
   return null;
 }
 
-function normalizePrinting(variant) {
-  const v = safeLower(variant);
+function normalizePrintingWanted(variant) {
+  const v = String(variant || "").toLowerCase();
+  // Your UI/identify tends to say "holo/reverse/foil/etched"
   if (v.includes("foil") || v.includes("holo") || v.includes("reverse") || v.includes("etched")) return "Foil";
   return "Normal";
 }
 
-function pickPrice(item) {
-  // Try common fields first
-  const direct = Number(
-    item?.marketPrice ??
-      item?.price ??
-      item?.avg ??
-      item?.mid ??
-      item?.low ??
-      item?.statistics?.market ??
-      item?.statistics?.avg
-  );
-  if (isFinite(direct)) return direct;
+function buildNameQuery(card) {
+  return String(card?.name || "").trim();
+}
 
+function buildSetQuery(card) {
+  // Prefer explicit set name; fall back to setCode if user passed it.
+  return String(card?.set || card?.setCode || "").trim();
+}
+
+function normalizeCollectorNumber(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  // "11/108" -> "11"
+  if (s.includes("/")) return s.split("/")[0].trim();
+  return s;
+}
+
+// Strict variant picker so we stop choosing the wrong (expensive) variant.
+// IMPORTANT: JustTCG docs say variant.price is USD.
+function pickVariantPrice(item, wanted = { condition: "Near Mint", printing: "Normal", language: "English" }) {
   const variants = Array.isArray(item?.variants) ? item.variants : [];
-  let best = null;
-  for (const v of variants) {
-    const p = Number(v?.marketPrice ?? v?.price ?? v?.avg ?? v?.mid ?? v?.low);
-    if (!isFinite(p)) continue;
-    if (best == null || p > best) best = p;
+  if (!variants.length) return null;
+
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  const wantC = norm(wanted.condition);
+  const wantP = norm(wanted.printing);
+  const wantL = norm(wanted.language);
+
+  const score = (v) => {
+    let s = 0;
+
+    const c = norm(v?.condition);
+    const p = norm(v?.printing);
+    const l = norm(v?.language);
+
+    // exact matches
+    if (c === wantC) s += 10;
+    if (p === wantP) s += 8;
+    if (l === wantL) s += 6;
+
+    // fuzzy fallbacks
+    if (c.includes("near") && c.includes("mint")) s += 2;
+    if (p.includes("normal")) s += 1;
+    if (l.includes("english")) s += 1;
+
+    // de-prioritise obvious mismatches
+    if (wantP === "normal" && (p.includes("foil") || p.includes("holo") || p.includes("reverse"))) s -= 3;
+    if (wantL === "english" && (l.includes("japanese") || l.includes("korean") || l.includes("german"))) s -= 2;
+
+    return s;
+  };
+
+  const ranked = variants
+    .map((v) => ({ v, p: Number(v?.price) }))
+    .filter((x) => Number.isFinite(x.p))
+    .sort((a, b) => score(b.v) - score(a.v));
+
+  if (!ranked.length) return null;
+
+  return {
+    priceUSD: ranked[0].p,
+    pickedVariant: ranked[0].v,
+  };
+}
+
+async function fetchWithTimeout(url, opts = {}, timeoutMs = 9000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
   }
-  return best;
 }
 
-function scoreCardResult(wanted, it) {
-  const wName = safeLower(wanted?.name);
-  const wSet = safeLower(wanted?.set);
-  const wNum = String(wanted?.collectorNumber || wanted?.number || "").trim();
-
-  const n = safeLower(it?.name);
-  const s = safeLower(it?.set?.name || it?.setName || it?.set || "");
-  const num = String(it?.number || it?.collectorNumber || it?.localId || "").trim();
-
-  let score = 0;
-  if (wName && n.includes(wName)) score += 6;
-  if (wSet && s.includes(wSet)) score += 3;
-  if (wNum && num === wNum) score += 5;
-  if (Array.isArray(it?.variants) && it.variants.length) score += 1;
-
-  return score;
+async function readJsonSafe(r) {
+  return await r.json().catch(() => ({}));
 }
 
-async function justtcgGet(url, apiKey) {
-  return await fetchWithTimeout(url, { headers: { "x-api-key": apiKey, Accept: "application/json" } }, 9000);
-}
-
-async function lookupSetSlug({ gameId, setName }, apiKey, debug) {
+// Look up a set slug/id from JustTCG (so we can query cards by set+number)
+async function justTCGFindSetSlug({ gameId, setName }, debug) {
   if (!setName) return null;
 
-  const params = new URLSearchParams({
-    game: gameId,
-    q: setName,
-    limit: String(PLAN_LIMIT),
-    offset: "0",
-  });
+  const apiKey = process.env.JUSTTCG_API_KEY;
+  if (!apiKey) return null;
 
-  const url = `${JUSTTCG_BASE}/sets?${params.toString()}`;
+  const url =
+    "https://api.justtcg.com/v1/sets?" +
+    new URLSearchParams({
+      game: gameId,
+      q: setName,
+      limit: "20", // plan limit: 1..20
+      offset: "0",
+    }).toString();
+
+  debug.justtcg = debug.justtcg || {};
   debug.justtcg.setLookup = { url, http: null, count: 0, error: null };
 
-  const r = await justtcgGet(url, apiKey);
-  const j = await r.json().catch(() => ({}));
+  const r = await fetchWithTimeout(
+    url,
+    { headers: { "x-api-key": apiKey, Accept: "application/json" } },
+    9000
+  );
+  const j = await readJsonSafe(r);
 
-  const list = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [];
+  const list = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : Array.isArray(j?.results) ? j.results : [];
   debug.justtcg.setLookup.http = r.status;
   debug.justtcg.setLookup.count = list.length;
   debug.justtcg.setLookup.error = r.ok ? null : (j?.error || j?.message || `HTTP ${r.status}`);
 
   if (!r.ok || !list.length) return null;
 
-  // Best guess match by name inclusion
-  const wanted = safeLower(setName);
-  const ranked = [...list].sort((a, b) => {
-    const an = safeLower(a?.name);
-    const bn = safeLower(b?.name);
-    const as = an.includes(wanted) ? 1 : 0;
-    const bs = bn.includes(wanted) ? 1 : 0;
-    return bs - as;
-  });
+  // Try to pick best by contains
+  const wanted = String(setName).toLowerCase();
+  const score = (s) => {
+    const nm = String(s?.name || s?.set || "").toLowerCase();
+    if (!nm) return 0;
+    if (nm === wanted) return 10;
+    if (nm.includes(wanted)) return 6;
+    return 1;
+  };
+  const ranked = [...list].sort((a, b) => score(b) - score(a));
+  const picked = ranked[0];
 
-  // Common slug fields: slug / id
-  return ranked[0]?.slug || ranked[0]?.id || null;
+  // Common fields might be: id, slug
+  return picked?.slug || picked?.id || picked?.code || null;
 }
 
-async function justtcgCardSearch(card, apiKey, debug) {
+// Search cards with a fast-first pipeline:
+// 1) set + number (best precision)
+// 2) set + q (name only)
+// 3) q only (name + set words)
+async function justTCGSearchCard(card, debug) {
+  const apiKey = process.env.JUSTTCG_API_KEY;
+  if (!apiKey) return { ok: false, reason: "Missing JUSTTCG_API_KEY" };
+
   const gameId = toJustTCGGameId(card?.game);
   if (!gameId) return { ok: false, reason: "Unsupported game" };
 
-  const name = String(card?.name || "").trim();
+  const name = buildNameQuery(card);
   if (!name) return { ok: false, reason: "Missing card name" };
 
-  const setName = String(card?.set || "").trim() || null;
-  const number = String(card?.collectorNumber || "").trim() || null;
-  const printing = normalizePrinting(card?.variant);
+  const setName = buildSetQuery(card);
+  const number = normalizeCollectorNumber(card?.collectorNumber);
 
   debug.justtcg = debug.justtcg || {};
   debug.justtcg.gameId = gameId;
   debug.justtcg.cardAttempts = [];
 
-  const setSlug = await lookupSetSlug({ gameId, setName }, apiKey, debug);
+  // Try to resolve set slug/id once (if set name exists)
+  let setSlug = null;
+  if (setName) {
+    setSlug = await justTCGFindSetSlug({ gameId, setName }, debug);
+  }
+
+  const base = "https://api.justtcg.com/v1/cards";
+  const limit = "20"; // IMPORTANT: plan says 1..20
 
   const attempts = [];
 
-  // Best: set + number (exact)
   if (setSlug && number) {
     attempts.push({
+      label: "set+number",
       params: {
         game: gameId,
         set: setSlug,
-        number,
-        limit: String(PLAN_LIMIT),
+        number: String(number),
+        limit,
         offset: "0",
         include_price_history: "false",
         include_statistics: "30d",
@@ -233,14 +284,14 @@ async function justtcgCardSearch(card, apiKey, debug) {
     });
   }
 
-  // Next: set + q=name
   if (setSlug) {
     attempts.push({
+      label: "set+q(name)",
       params: {
         game: gameId,
         set: setSlug,
         q: name,
-        limit: String(PLAN_LIMIT),
+        limit,
         offset: "0",
         include_price_history: "false",
         include_statistics: "30d",
@@ -248,79 +299,114 @@ async function justtcgCardSearch(card, apiKey, debug) {
     });
   }
 
-  // Next: q=name + setName words
-  if (setName) {
-    attempts.push({
-      params: {
-        game: gameId,
-        q: `${name} ${setName}`.trim(),
-        limit: String(PLAN_LIMIT),
-        offset: "0",
-        include_price_history: "false",
-        include_statistics: "30d",
-      },
-    });
-  }
-
-  // Last: q=name only
+  // last resort: q includes set words
+  const qLoose = setName ? `${name} ${setName}` : name;
   attempts.push({
+    label: "q(loose)",
     params: {
       game: gameId,
-      q: name,
-      limit: String(PLAN_LIMIT),
+      q: qLoose,
+      limit,
       offset: "0",
       include_price_history: "false",
       include_statistics: "30d",
     },
   });
 
+  const wantedName = name.toLowerCase();
+  const wantedSet = String(setName || "").toLowerCase();
+  const wantedPrinting = normalizePrintingWanted(card?.variant); // "Normal" or "Foil"
+
+  const scoreItem = (it) => {
+    let s = 0;
+    const nm = String(it?.name || "").toLowerCase();
+    const st = String(it?.set?.name || it?.set_name || it?.set || it?.setName || "").toLowerCase();
+    const num = String(it?.number || it?.collectorNumber || it?.localId || "").trim();
+
+    if (nm === wantedName) s += 10;
+    else if (nm.includes(wantedName)) s += 6;
+
+    if (wantedSet && st.includes(wantedSet)) s += 4;
+
+    if (number && num && num === String(number)) s += 8;
+
+    if (Array.isArray(it?.variants) && it.variants.length) s += 2;
+
+    // mild nudge: if variants exist, prefer those that likely include wanted printing
+    if (Array.isArray(it?.variants)) {
+      const hasWantedPrinting = it.variants.some(v => String(v?.printing || "").toLowerCase() === wantedPrinting.toLowerCase());
+      if (hasWantedPrinting) s += 1;
+    }
+
+    return s;
+  };
+
   for (const a of attempts) {
-    // IMPORTANT: some plans reject unknown params; if you get 400, you can prune later.
-    const url = `${JUSTTCG_BASE}/cards?${new URLSearchParams(a.params).toString()}`;
+    const url = base + "?" + new URLSearchParams(a.params).toString();
 
-    const r = await justtcgGet(url, apiKey);
-    const j = await r.json().catch(() => ({}));
+    try {
+      const r = await fetchWithTimeout(url, {
+        headers: { "x-api-key": apiKey, Accept: "application/json" },
+      }, 9000);
+      const j = await readJsonSafe(r);
 
-    const list = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : Array.isArray(j?.results) ? j.results : [];
-    const dbg = {
-      url,
-      http: r.status,
-      count: list.length,
-      error: r.ok ? null : (j?.error || j?.message || `HTTP ${r.status}`),
-      picked: null,
-    };
-    debug.justtcg.cardAttempts.push(dbg);
+      const list = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : Array.isArray(j?.results) ? j.results : [];
+      debug.justtcg.cardAttempts.push({
+        label: a.label,
+        url,
+        http: r.status,
+        count: list.length,
+        error: r.ok ? null : (j?.error || j?.message || `HTTP ${r.status}`),
+      });
 
-    if (!r.ok || !list.length) continue;
+      if (!r.ok || !list.length) continue;
 
-    // Rank and pick best
-    const ranked = [...list].sort((x, y) => scoreCardResult(card, y) - scoreCardResult(card, x));
-    const picked = ranked[0];
+      const ranked = [...list].sort((x, y) => scoreItem(y) - scoreItem(x));
+      const picked = ranked[0];
 
-    const raw = pickPrice(picked);
-    if (!isFinite(raw)) continue;
+      // Strictly pick the desired variant; avoid grabbing max price.
+      const pv = pickVariantPrice(picked, {
+        condition: "Near Mint",
+        printing: wantedPrinting, // Normal vs Foil inferred from variant
+        language: "English",
+      });
 
-    const currency = String(picked?.currency || j?.currency || "EUR").toUpperCase();
+      if (!pv || !isFinite(pv.priceUSD)) continue;
 
-    dbg.picked = {
-      id: picked?.id || picked?.cardId || null,
-      name: picked?.name || null,
-      set: picked?.set?.name || picked?.setName || picked?.set || null,
-      number: picked?.number || null,
-      printing,
-      currency,
-      raw,
-    };
+      // Per JustTCG docs: variants.price is USD
+      const currency = "USD";
+      const raw = pv.priceUSD;
 
-    return {
-      ok: true,
-      value: {
-        source: "JustTCG",
-        currency,
-        raw,
-        picked: dbg.picked,
-      },
-    };
+      return {
+        ok: true,
+        value: {
+          source: "JustTCG",
+          currency,
+          raw,
+          picked: {
+            id: picked?.id || picked?.cardId || null,
+            name: picked?.name || null,
+            set: picked?.set?.name || picked?.set_name || picked?.set || picked?.setName || null,
+            number: picked?.number || picked?.collectorNumber || null,
+            variantPicked: {
+              condition: pv.pickedVariant?.condition || null,
+              printing: pv.pickedVariant?.printing || null,
+              language: pv.pickedVariant?.language || null,
+              price: pv.pickedVariant?.price ?? null,
+            },
+          },
+        },
+      };
+    } catch (e) {
+      debug.justtcg.cardAttempts.push({
+        label: a.label,
+        url,
+        http: "FETCH_ERR",
+        count: 0,
+        error: String(e?.message || e),
+      });
+      continue;
+    }
   }
 
   return { ok: false, reason: "No results" };
@@ -333,13 +419,12 @@ export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
-    const apiKey = process.env.JUSTTCG_API_KEY;
-    if (!apiKey) return json(res, 500, { error: "Missing JUSTTCG_API_KEY" });
-
     const { card, distribution, feeGBP } = await readBody(req);
-    if (!card?.game || !card?.name) return json(res, 400, { error: "Missing card (game + name required)" });
+    if (!card?.game || !card?.name) {
+      return json(res, 400, { error: "Missing card (game + name required)" });
+    }
 
-    const live = await justtcgCardSearch(card, apiKey, debug);
+    const live = await justTCGSearchCard(card, debug);
 
     if (!live.ok) {
       return json(res, 200, {
@@ -369,36 +454,28 @@ export default async function handler(req, res) {
       evGraded += prob * (live.value.raw * upliftMultiplier(grade));
     }
 
-    const fee = isFinite(Number(feeGBP)) ? Number(feeGBP) : 15;
+    // FX (ECB EUR base)
+    const fx = await getFX(debug);
 
-    // FX: don’t block response if ECB fails
-    let fx = null;
-    try {
-      fx = await getFX(debug);
-    } catch (e) {
-      debug.fx.error = String(e?.message || e);
-      fx = null;
-    }
+    const fee = isFinite(Number(feeGBP)) ? Number(feeGBP) : 15;
 
     const out = {
       source: live.value.source,
       raw: live.value.raw,
-      currency: live.value.currency,
+      currency: live.value.currency, // USD (per JustTCG)
       evGraded,
       upliftModel: "conservative",
       picked: live.value.picked,
-      fx: fx ? { base: fx.base, GBP: fx.GBP, USD: fx.USD } : null,
+      fx: { base: fx.base, GBP: fx.GBP, USD: fx.USD },
       converted: {},
       debug,
     };
 
-    if (fx) {
-      for (const ccy of ["GBP", "EUR", "USD"]) {
-        const rawC = convert(live.value.raw, live.value.currency, ccy, fx);
-        const evC = convert(evGraded, live.value.currency, ccy, fx);
-        const feeC = convert(fee, "GBP", ccy, fx);
-        out.converted[ccy] = { raw: rawC, evGraded: evC, fee: feeC };
-      }
+    for (const ccy of ["GBP", "EUR", "USD"]) {
+      const rawC = convert(live.value.raw, live.value.currency, ccy, fx);
+      const evC = convert(evGraded, live.value.currency, ccy, fx);
+      const feeC = convert(fee, "GBP", ccy, fx);
+      out.converted[ccy] = { raw: rawC, evGraded: evC, fee: feeC };
     }
 
     return json(res, 200, out);
