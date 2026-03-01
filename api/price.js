@@ -101,36 +101,8 @@ function normalizeCollectorNumber(raw) {
   if (!raw) return null;
   const s = String(raw).trim();
   if (!s) return null;
-  // "11/108" -> "11"
   if (s.includes("/")) return s.split("/")[0].trim();
   return s;
-}
-
-function desiredPrintingFromVariant(variant) {
-  const v = String(variant || "").toLowerCase();
-
-  // Keep this conservative: default "Normal"
-  // If later you want higher accuracy, map Pokémon "Holofoil/Reverse Holofoil" etc.
-  if (!v) return "Normal";
-
-  if (v.includes("reverse")) return "Reverse Holofoil";
-  if (v.includes("holo") || v.includes("foil") || v.includes("etched")) return "Holofoil";
-  if (v.includes("1st")) return "1st Edition";
-
-  return "Normal";
-}
-
-function desiredCondition() {
-  // Use the same label JustTCG shows in variants and examples
-  return "Near Mint";
-}
-
-function buildLooseQuery(card) {
-  const parts = [];
-  if (card?.name) parts.push(String(card.name).trim());
-  if (card?.set) parts.push(String(card.set).trim());
-  if (card?.collectorNumber) parts.push(String(card.collectorNumber).trim());
-  return parts.filter(Boolean).join(" ").trim();
 }
 
 async function fetchWithTimeout(url, opts = {}, timeoutMs = 9000) {
@@ -143,37 +115,82 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 9000) {
   }
 }
 
+function desiredPrintingFromVariant(variant) {
+  const v = String(variant || "").toLowerCase();
+  if (!v) return "Normal";
+  if (v.includes("reverse")) return "Reverse Holofoil";
+  if (v.includes("holo") || v.includes("foil") || v.includes("etched")) return "Holofoil";
+  if (v.includes("1st")) return "1st Edition";
+  return "Normal";
+}
+
+function desiredCondition() {
+  return "Near Mint";
+}
+
+// Sealed / non-single filters (stop booster packs etc.)
+function looksLikeSealedOrNonSingle(item) {
+  const name = String(item?.name || "").toLowerCase();
+  const id = String(item?.id || item?.cardId || "").toLowerCase();
+
+  const bad = [
+    "booster pack",
+    "booster box",
+    "display box",
+    "box",
+    "case",
+    "pack",
+    "tin",
+    "bundle",
+    "elite trainer box",
+    "etb",
+    "starter deck",
+    "structure deck",
+    "theme deck",
+    "precon",
+    "collection",
+    "blister",
+    "lot",
+    "bulk",
+    "sealed",
+    "promo pack",
+  ];
+
+  // If it literally says "booster pack", it's not a single.
+  if (bad.some((k) => name.includes(k))) return true;
+  if (bad.some((k) => id.includes(k.replace(/\s+/g, "-")))) return true;
+
+  return false;
+}
+
 function pickBestVariantPrice(cardItem, wantPrinting, wantCondition) {
   const variants = Array.isArray(cardItem?.variants) ? cardItem.variants : [];
   if (!variants.length) return null;
 
-  // Prefer exact matches, otherwise fall back safely.
+  const wantP = String(wantPrinting || "").toLowerCase();
+  const wantC = String(wantCondition || "").toLowerCase();
+
+  const prices = (list) =>
+    list
+      .map((v) => Number(v?.price))
+      .filter((p) => isFinite(p));
+
   const exact = variants.filter(
     (v) =>
-      String(v?.printing || "").toLowerCase() === String(wantPrinting || "").toLowerCase() &&
-      String(v?.condition || "").toLowerCase() === String(wantCondition || "").toLowerCase() &&
-      isFinite(Number(v?.price))
+      String(v?.printing || "").toLowerCase() === wantP &&
+      String(v?.condition || "").toLowerCase() === wantC
   );
+  const exactPrices = prices(exact);
+  if (exactPrices.length) return Math.min(...exactPrices);
 
-  if (exact.length) {
-    // If multiple (rare), take the LOWEST price (conservative, avoids £350 spikes)
-    return Math.min(...exact.map((v) => Number(v.price)));
-  }
+  const nm = variants.filter((v) => String(v?.condition || "").toLowerCase() === wantC);
+  const nmPrices = prices(nm);
+  if (nmPrices.length) return Math.min(...nmPrices);
 
-  const nmAnyPrinting = variants.filter(
-    (v) =>
-      String(v?.condition || "").toLowerCase() === String(wantCondition || "").toLowerCase() &&
-      isFinite(Number(v?.price))
-  );
-  if (nmAnyPrinting.length) {
-    return Math.min(...nmAnyPrinting.map((v) => Number(v.price)));
-  }
+  const anyPrices = prices(variants);
+  if (anyPrices.length) return Math.min(...anyPrices);
 
-  const any = variants.filter((v) => isFinite(Number(v?.price)));
-  if (!any.length) return null;
-
-  // Last fallback: still take LOWEST available
-  return Math.min(...any.map((v) => Number(v.price)));
+  return null;
 }
 
 async function justTCGSetLookup(gameId, setName, apiKey, debug) {
@@ -208,7 +225,6 @@ async function justTCGSetLookup(gameId, setName, apiKey, debug) {
     }
     if (!list.length) return null;
 
-    // Try to pick the closest by name contains
     const want = String(setName).toLowerCase();
     const score = (s) => {
       const nm = String(s?.name || s?.set_name || "").toLowerCase();
@@ -220,7 +236,6 @@ async function justTCGSetLookup(gameId, setName, apiKey, debug) {
     const ranked = [...list].sort((a, b) => score(b) - score(a));
     const picked = ranked[0];
 
-    // JustTCG set "id" is a slug (e.g. jungle-pokemon). Use that.
     const setId = picked?.id || picked?.setId || picked?.slug || null;
     debug.justtcg.setLookup.picked = { id: setId, name: picked?.name || picked?.set_name || null };
 
@@ -230,6 +245,54 @@ async function justTCGSetLookup(gameId, setName, apiKey, debug) {
     debug.justtcg.setLookup.error = e?.message || "fetch error";
     return null;
   }
+}
+
+function getItemNumber(it) {
+  const n =
+    it?.number ??
+    it?.collectorNumber ??
+    it?.localId ??
+    it?.cardNumber ??
+    null;
+  if (n == null) return null;
+  const s = String(n).trim();
+  if (!s || s.toLowerCase() === "n/a") return null;
+  return s;
+}
+
+function scoreCandidate(it, wantName, wantSet, wantNum) {
+  // Higher = better
+  let s = 0;
+
+  const nm = String(it?.name || "").toLowerCase();
+  const st = String(it?.set_name || it?.set || it?.setName || "").toLowerCase();
+  const num = getItemNumber(it);
+
+  // sealed penalty (hard filtered earlier, but keep defensive)
+  if (looksLikeSealedOrNonSingle(it)) s -= 1000;
+
+  // number match matters most when user supplied number
+  if (wantNum && num && String(num) === String(wantNum)) s += 200;
+  else if (wantNum && num && String(num).includes(String(wantNum))) s += 80;
+  else if (wantNum && !num) s -= 40;
+
+  // name match
+  if (wantName) {
+    if (nm === wantName) s += 120;
+    else if (nm.includes(wantName)) s += 70;
+    else s -= 30;
+  }
+
+  // set match
+  if (wantSet) {
+    if (st === wantSet) s += 60;
+    else if (st.includes(wantSet)) s += 25;
+  }
+
+  // prefer items with variants
+  if (Array.isArray(it?.variants) && it.variants.length) s += 10;
+
+  return s;
 }
 
 async function justTCGCardsSearch(card, debug) {
@@ -246,23 +309,21 @@ async function justTCGCardsSearch(card, debug) {
   const wantCondition = desiredCondition();
   const wantPrinting = desiredPrintingFromVariant(card?.variant);
 
-  const number = normalizeCollectorNumber(card?.collectorNumber);
-  const qLoose = buildLooseQuery(card);
+  const wantName = String(card?.name || "").trim().toLowerCase() || null;
+  const wantSet = String(card?.set || "").trim().toLowerCase() || null;
+  const wantNum = normalizeCollectorNumber(card?.collectorNumber);
 
-  // Optional set slug lookup (may 500 sometimes; we handle that)
   const setId = await justTCGSetLookup(gameId, card?.set, apiKey, debug);
-
   const base = "https://api.justtcg.com/v1/cards";
 
   const attempts = [
-    // Most precise: set + number (newer API supports number filter)  [oai_citation:3‡JustTCG](https://justtcg.com/docs)
-    setId && number
+    setId && wantNum
       ? {
           label: "set+number",
           params: {
             game: gameId,
             set: setId,
-            number: String(number),
+            number: String(wantNum),
             limit: "20",
             offset: "0",
             include_price_history: "false",
@@ -270,15 +331,13 @@ async function justTCGCardsSearch(card, debug) {
           },
         }
       : null,
-
-    // Set + q(name)
-    setId
+    setId && card?.name
       ? {
-          label: "set+q",
+          label: "set+q(name)",
           params: {
             game: gameId,
             set: setId,
-            q: String(card?.name || "").trim(),
+            q: String(card.name).trim(),
             limit: "20",
             offset: "0",
             include_price_history: "false",
@@ -286,14 +345,12 @@ async function justTCGCardsSearch(card, debug) {
           },
         }
       : null,
-
-    // Loose q: name + set + number string
-    qLoose
+    card?.name
       ? {
-          label: "q(loose)",
+          label: "q(name+set+num)",
           params: {
             game: gameId,
-            q: qLoose,
+            q: [card.name, card.set, wantNum].filter(Boolean).join(" "),
             limit: "20",
             offset: "0",
             include_price_history: "false",
@@ -301,8 +358,6 @@ async function justTCGCardsSearch(card, debug) {
           },
         }
       : null,
-
-    // Bare minimum: name only
     card?.name
       ? {
           label: "q(name)",
@@ -326,48 +381,44 @@ async function justTCGCardsSearch(card, debug) {
       const j = await r.json().catch(() => ({}));
 
       const list = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : Array.isArray(j?.results) ? j.results : [];
-      const entry = {
+      debug.justtcg.cardAttempts.push({
         label: a.label,
         url,
         http: r.status,
         count: list.length,
         error: !r.ok ? (j?.error?.message || j?.message || j?.error || `HTTP ${r.status}`) : null,
-      };
-      debug.justtcg.cardAttempts.push(entry);
+      });
 
       if (!r.ok) continue;
       if (!list.length) continue;
 
-      // Rank by name+set similarity
-      const wantName = String(card?.name || "").toLowerCase();
-      const wantSet = String(card?.set || "").toLowerCase();
+      // 1) drop sealed/non-single items
+      let filtered = list.filter((it) => !looksLikeSealedOrNonSingle(it));
 
-      const score = (it) => {
-        let s = 0;
-        const nm = String(it?.name || "").toLowerCase();
-        const st = String(it?.set_name || it?.set || it?.setName || "").toLowerCase();
-        if (wantName && nm === wantName) s += 8;
-        else if (wantName && nm.includes(wantName)) s += 5;
+      // 2) if we have a number, require exact number match if possible
+      if (wantNum) {
+        const exactNum = filtered.filter((it) => String(getItemNumber(it) || "") === String(wantNum));
+        if (exactNum.length) filtered = exactNum;
+      }
 
-        if (wantSet && st === wantSet) s += 5;
-        else if (wantSet && st.includes(wantSet)) s += 2;
+      // 3) if we have a name, require it to appear in the item name if possible
+      if (wantName) {
+        const nameMatch = filtered.filter((it) => String(it?.name || "").toLowerCase().includes(wantName));
+        if (nameMatch.length) filtered = nameMatch;
+      }
 
-        // If number is present and API returns number/localId field, prefer match
-        const itNum = String(it?.number || it?.collectorNumber || it?.localId || "").trim();
-        if (number && itNum && itNum === String(number)) s += 4;
+      if (!filtered.length) continue;
 
-        // prefer having variants
-        if (Array.isArray(it?.variants) && it.variants.length) s += 1;
-        return s;
-      };
-
-      const ranked = [...list].sort((x, y) => score(y) - score(x));
+      // Rank remaining candidates
+      const ranked = [...filtered].sort(
+        (x, y) => scoreCandidate(y, wantName, wantSet, wantNum) - scoreCandidate(x, wantName, wantSet, wantNum)
+      );
       const picked = ranked[0];
 
       const raw = pickBestVariantPrice(picked, wantPrinting, wantCondition);
       if (!isFinite(raw)) continue;
 
-      // Docs/examples use $ amounts; treat as USD unless API returns otherwise.  [oai_citation:4‡JustTCG](https://justtcg.com/docs)
+      // If API doesn’t provide currency, assume USD (common) — but allow override if present
       const currency = String(picked?.currency || j?.currency || "USD").toUpperCase();
 
       return {
@@ -380,7 +431,7 @@ async function justTCGCardsSearch(card, debug) {
             id: picked?.id || picked?.cardId || null,
             name: picked?.name || null,
             set: picked?.set_name || picked?.set || picked?.setName || null,
-            number: picked?.number || picked?.collectorNumber || picked?.localId || null,
+            number: getItemNumber(picked),
             want: { printing: wantPrinting, condition: wantCondition },
           },
         },
@@ -422,7 +473,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // EV graded using distribution + uplift on RAW
     const dist =
       Array.isArray(distribution) && distribution.length
         ? distribution
@@ -440,7 +490,6 @@ export default async function handler(req, res) {
       evGraded += prob * (live.value.raw * upliftMultiplier(grade));
     }
 
-    // FX (ECB EUR base)
     const fx = await getFX(debug);
     const fee = isFinite(Number(feeGBP)) ? Number(feeGBP) : 15;
 
