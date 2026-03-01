@@ -350,7 +350,7 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       position:relative;
-      flex-wrap:wrap; /* FIX: prevents cut-off on desktop */
+      flex-wrap:wrap;
     }
     .cap b{color:var(--fg); font-weight:760}
     .cap .left{
@@ -790,6 +790,79 @@
               </div>
 
               <div id="candidateWrap" style="margin-top:10px; display:none;"></div>
+
+              <!-- Manual card details -->
+              <div class="module" style="margin-top:12px;">
+                <div class="moduleTitle">
+                  <b>Manual card details</b>
+                  <span class="pill2" id="manualPill">Optional</span>
+                </div>
+
+                <div class="small">
+                  If identification or pricing matches the wrong item, enter details here to tighten pricing.
+                  Best: <b>Set + Number</b>.
+                </div>
+
+                <div class="grid2" style="margin-top:10px;">
+                  <div class="cell" style="display:block;">
+                    <div class="small" style="margin-bottom:6px;">Game</div>
+                    <select class="input" id="mGame" style="width:100%;">
+                      <option value="">Auto</option>
+                      <option value="pokemon">Pokémon</option>
+                      <option value="mtg">Magic</option>
+                      <option value="yugioh">Yu-Gi-Oh!</option>
+                    </select>
+                  </div>
+
+                  <div class="cell" style="display:block;">
+                    <div class="small" style="margin-bottom:6px;">Condition</div>
+                    <select class="input" id="mCond" style="width:100%;">
+                      <option value="">Auto</option>
+                      <option value="near-mint">Near Mint</option>
+                      <option value="light-played">Lightly Played</option>
+                      <option value="moderate-played">Moderately Played</option>
+                      <option value="heavy-played">Heavily Played</option>
+                      <option value="damaged">Damaged</option>
+                    </select>
+                  </div>
+
+                  <div class="cell" style="display:block;">
+                    <div class="small" style="margin-bottom:6px;">Name</div>
+                    <input class="input" id="mName" placeholder="e.g. Cubone" style="width:100%;" />
+                  </div>
+
+                  <div class="cell" style="display:block;">
+                    <div class="small" style="margin-bottom:6px;">Set</div>
+                    <input class="input" id="mSet" placeholder="e.g. Jungle" style="width:100%;" />
+                  </div>
+
+                  <div class="cell" style="display:block;">
+                    <div class="small" style="margin-bottom:6px;">Number</div>
+                    <input class="input" id="mNum" placeholder="e.g. 50 or 11/108" style="width:100%;" />
+                  </div>
+
+                  <div class="cell" style="display:block;">
+                    <div class="small" style="margin-bottom:6px;">Printing / Variant</div>
+                    <input class="input" id="mVar" placeholder="e.g. Normal, Holo, Reverse" style="width:100%;" />
+                  </div>
+                </div>
+
+                <div class="fieldRow" style="margin-top:10px;">
+                  <label class="badge" style="cursor:pointer;">
+                    <input id="mUse" type="checkbox" style="accent-color:#0b0f14; margin-right:8px;">
+                    <strong>Use manual</strong> for pricing
+                  </label>
+
+                  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn secondary" id="mApplyBtn" type="button">Apply to pricing</button>
+                    <button class="btn soft" id="mClearBtn" type="button">Clear</button>
+                  </div>
+                </div>
+
+                <div class="small" style="margin-top:10px;" id="mHint">
+                  Tip: entering <b>Set + Number</b> prevents “booster pack” mismatches.
+                </div>
+              </div>
             </div>
 
             <!-- Pre-screen result -->
@@ -968,7 +1041,6 @@
       devPill.textContent = statusLabel || "OK";
       lastDevPayload = payload || {};
       devOut.textContent = JSON.stringify(lastDevPayload, null, 2);
-      // auto-open if error-ish
       if (String(statusLabel||"").toLowerCase().includes("error") || String(statusLabel||"").includes("HTTP")) {
         devDrawer.open = true;
       }
@@ -1069,6 +1141,18 @@
     const cardPill  = document.getElementById('cardPill');
     const candidateWrap = document.getElementById('candidateWrap');
 
+    // Manual card details
+    const mGame = document.getElementById('mGame');
+    const mCond = document.getElementById('mCond');
+    const mName = document.getElementById('mName');
+    const mSet  = document.getElementById('mSet');
+    const mNum  = document.getElementById('mNum');
+    const mVar  = document.getElementById('mVar');
+    const mUse  = document.getElementById('mUse');
+    const mApplyBtn = document.getElementById('mApplyBtn');
+    const mClearBtn = document.getElementById('mClearBtn');
+    const manualPill = document.getElementById('manualPill');
+
     const resultPill = document.getElementById('resultPill');
     const gradeBig = document.getElementById('gradeBig');
     const gradeLabel = document.getElementById('gradeLabel');
@@ -1152,6 +1236,80 @@
       else setStatus("Upload/capture front + back to begin.");
     }
 
+    function normalizeNumForQuery(v){
+      if (!v) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      return s;
+    }
+
+    function manualHasAnything(){
+      return !!(
+        mName.value.trim() ||
+        mSet.value.trim() ||
+        mNum.value.trim() ||
+        mVar.value.trim() ||
+        mGame.value ||
+        mCond.value
+      );
+    }
+
+    function setManualPill(){
+      if (!manualHasAnything()) manualPill.textContent = "Optional";
+      else manualPill.textContent = mUse.checked ? "Manual ON" : "Manual ready";
+    }
+
+    function buildManualCard(){
+      const card = {
+        game: (mGame.value || (ident?.game || "")).toLowerCase() || null,
+        name: mName.value.trim() || ident?.name || ident?.displayName || null,
+        set:  mSet.value.trim()  || ident?.set || null,
+        collectorNumber: normalizeNumForQuery(mNum.value.trim() || ident?.collectorNumber || null),
+        variant: mVar.value.trim() || ident?.variant || null,
+        condition: mCond.value || null
+      };
+      Object.keys(card).forEach(k => (card[k] == null || card[k] === "") && delete card[k]);
+      return card;
+    }
+
+    function fillManualFromCard(c){
+      if (!c) return;
+      if (!mGame.value) mGame.value = c.game || "";
+      if (!mName.value.trim()) mName.value = c.displayName || c.name || "";
+      if (!mSet.value.trim())  mSet.value  = c.set || "";
+      if (!mNum.value.trim())  mNum.value  = c.collectorNumber || "";
+      if (!mVar.value.trim())  mVar.value  = c.variant || "";
+      setManualPill();
+    }
+
+    [mGame,mCond,mName,mSet,mNum,mVar,mUse].forEach(el=>{
+      el.addEventListener("input", setManualPill);
+      el.addEventListener("change", setManualPill);
+    });
+
+    mApplyBtn.addEventListener("click", async ()=>{
+      if (!manualHasAnything()){
+        toastShow("Enter at least a card name (ideally set + number).");
+        return;
+      }
+      mUse.checked = true;
+      setManualPill();
+      toastShow("Manual details enabled for pricing.");
+      await fetchPriceAndUpdate();
+    });
+
+    mClearBtn.addEventListener("click", ()=>{
+      mGame.value = "";
+      mCond.value = "";
+      mName.value = "";
+      mSet.value  = "";
+      mNum.value  = "";
+      mVar.value  = "";
+      mUse.checked = false;
+      setManualPill();
+      toastShow("Manual details cleared.");
+    });
+
     function resetRight(){
       ident = null;
       identCandidates = [];
@@ -1179,6 +1337,16 @@
 
       rawVal.textContent = evVal.textContent = feeVal.textContent = roiVal.textContent = "—";
       downloadBtn.disabled = true;
+
+      // reset manual inputs
+      mGame.value = "";
+      mCond.value = "";
+      mName.value = "";
+      mSet.value  = "";
+      mNum.value  = "";
+      mVar.value  = "";
+      mUse.checked = false;
+      setManualPill();
 
       updateSteps();
     }
@@ -1364,12 +1532,7 @@
       const controller = new AbortController();
       const t = setTimeout(()=>controller.abort(), timeoutMs);
       try{
-        const resp = await fetch(url, {
-          method,
-          headers,
-          body,
-          signal: controller.signal
-        });
+        const resp = await fetch(url, { method, headers, body, signal: controller.signal });
         const text = await resp.text().catch(()=> "");
         let json = null;
         try{ json = text ? JSON.parse(text) : null; }catch(e){ json = { _raw: text }; }
@@ -1403,6 +1566,7 @@
           <span class="pill2">${Math.round((c.confidence||0)*100)}%</span>`;
         btn.addEventListener("click", async ()=>{
           ident = c;
+          fillManualFromCard(c);
           identCandidates = cands;
           identPill.textContent = "Selected";
           identText.textContent = "Card selected. Fetching live EU/UK price…";
@@ -1479,7 +1643,15 @@
     });
 
     async function fetchPriceAndUpdate(){
-      if (!ident) return;
+      const useManual = !!mUse?.checked;
+      const cardForPricing = useManual ? buildManualCard() : ident;
+
+      if (!cardForPricing?.name || !cardForPricing?.game){
+        price = null;
+        applyROI();
+        return;
+      }
+
       if (pricingMode.value === "manual"){
         price = null;
         applyROI();
@@ -1496,7 +1668,7 @@
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
-          card: ident,
+          card: cardForPricing,
           currency: currencySel.value,
           distribution: dist,
           feeGBP: Number(feeInput.value || 15)
@@ -1516,7 +1688,11 @@
 
       price = json;
       identPill.textContent = json?.source ? `Price: ${json.source}` : "Price: OK";
-      identText.textContent = json?.note ? json.note : "Card priced (where available).";
+
+      identText.textContent = useManual
+        ? "Pricing used your manual card details."
+        : (json?.note ? json.note : "Card priced (where available).");
+
       applyROI();
     }
 
@@ -1558,7 +1734,6 @@
         identCandidates = json?.candidates || [];
         const extracted = json?.extracted || null;
 
-        // If no candidates, still show what we DID extract (so you can debug "No match")
         if (!identCandidates.length){
           identPill.textContent = "No match";
           identText.textContent = extracted
@@ -1578,6 +1753,7 @@
 
         if (bestConf >= 0.88 && identCandidates.length === 1){
           ident = best;
+          fillManualFromCard(best);
           identPill.textContent = "Identified";
           identText.textContent = "High confidence match. Fetching live EU/UK price…";
           toastShow("Card identified.");
@@ -1673,6 +1849,10 @@
           inputs: { strict: modeStrict.checked, fast: modeFast.checked },
           identification: ident || null,
           identificationCandidates: identCandidates || [],
+          manual: {
+            enabledForPricing: !!mUse?.checked,
+            card: manualHasAnything() ? buildManualCard() : null
+          },
           grade: gradeReport,
           price: price,
           roi: {
@@ -1714,6 +1894,7 @@
     updateButtons();
     updateSteps();
     setDev("Idle", {});
+    setManualPill();
   </script>
 </body>
 </html>
