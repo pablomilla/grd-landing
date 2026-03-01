@@ -17,7 +17,6 @@
       --fg:#0b0f14;
       --muted:#5f6b7a;
       --line:rgba(11,15,20,.12);
-      --line2:rgba(11,15,20,.08);
       --shadow: 0 22px 70px rgba(11,15,20,.12);
       --shadow2: 0 14px 40px rgba(11,15,20,.10);
       --radius: 24px;
@@ -306,7 +305,7 @@
       transform: translateZ(0);
     }
 
-    /* --- Photo overlays (new) --- */
+    /* Photo overlays */
     .overlay{
       position:absolute;
       inset:0;
@@ -553,28 +552,6 @@
     .badge.bad {background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(210,40,60,.10));}
     .badge strong{color:var(--fg); font-weight:900}
 
-    .fieldRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-      margin-top: 8px;
-    }
-    .input{
-      border:1px solid rgba(11,15,20,.12);
-      border-radius: 14px;
-      padding: 12px 12px;
-      font-size: 13px;
-      background: rgba(255,255,255,.70);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      outline:none;
-      min-width: 160px;
-    }
-    .input:focus{box-shadow: 0 0 0 4px rgba(11,15,20,.10); border-color: rgba(11,15,20,.22);}
-    select.input{cursor:pointer}
-
     .list{
       margin: 8px 0 0 18px;
       padding:0;
@@ -678,7 +655,7 @@
       word-break: break-word;
     }
 
-    /* New: concise report blocks */
+    /* Concise report blocks */
     .reportBlock{
       border:1px solid rgba(11,15,20,.10);
       border-radius:16px;
@@ -730,8 +707,8 @@
           <div class="inner">
             <h1>Know what to expect before you submit.</h1>
             <p class="sub">
-              Upload <b>front + back</b>. We identify the printing (when possible) and generate a
-              <b>clear pre-grade report</b>: likely grade, range, confidence, and the <b>reasons</b>.
+              Upload <b>front + back</b>. We generate a <b>clear pre-grade report</b>: expected grade, range,
+              confidence, subgrades, and the <b>reasons</b>.
             </p>
 
             <div class="stepper" aria-label="Steps">
@@ -801,8 +778,6 @@
             <div class="previewWrap" aria-label="Previews">
               <div class="preview" aria-label="Front preview">
                 <img class="img is-placeholder" id="frontImg" alt="Front preview" />
-
-                <!-- NEW overlay -->
                 <div class="overlay" id="frontOverlay">
                   <div class="surface" id="ovSurfaceF"></div>
                   <div class="frame"></div>
@@ -826,8 +801,6 @@
 
               <div class="preview" aria-label="Back preview">
                 <img class="img is-placeholder" id="backImg" alt="Back preview" />
-
-                <!-- NEW overlay -->
                 <div class="overlay" id="backOverlay">
                   <div class="surface" id="ovSurfaceB"></div>
                   <div class="frame"></div>
@@ -856,7 +829,6 @@
                 <span>Upload/capture front + back to begin.</span>
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn secondary" id="identifyBtn" type="button" disabled>Identify card</button>
                 <button class="btn" id="runBtn" type="button" disabled>Generate pre-grade report</button>
               </div>
             </div>
@@ -866,7 +838,7 @@
                 <span>Developer output</span>
                 <span class="pill2" id="devPill">Idle</span>
               </summary>
-              <div class="small" id="devNote" style="margin-top:8px;">Shows the last API status + body.</div>
+              <div class="small" id="devNote" style="margin-top:8px;">Shows the last /api/grade status + body.</div>
               <pre class="debugOut" id="devOut">{}</pre>
               <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
                 <button class="btn secondary" id="copyDev" type="button">Copy JSON</button>
@@ -881,28 +853,6 @@
         <!-- Right -->
         <div class="panel">
           <div class="inner">
-
-            <!-- Identification -->
-            <div class="module" id="identModule">
-              <div class="moduleTitle">
-                <b>Identification</b>
-                <span class="pill2" id="identPill">Waiting…</span>
-              </div>
-              <div class="small" id="identText">Upload both sides, then identify the card.</div>
-
-              <div class="fieldRow" style="margin-top:10px;">
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <span class="pill2" id="gamePill">Game: —</span>
-                  <span class="pill2" id="cardPill">Card: —</span>
-                </div>
-              </div>
-
-              <div class="small" style="margin-top:10px;">
-                If multiple printings match, we’ll show top candidates to pick from.
-              </div>
-
-              <div id="candidateWrap" style="margin-top:10px; display:none;"></div>
-            </div>
 
             <!-- Pre-grade report -->
             <div class="module" id="resultModule">
@@ -933,7 +883,6 @@
                 <div class="cell"><span>Surface</span><b id="surf">—</b></div>
               </div>
 
-              <!-- NEW: collector-style report -->
               <div class="reportBlock" id="collectorReport">
                 <h3>Collector summary</h3>
                 <div class="chips" id="summaryChips"></div>
@@ -958,48 +907,13 @@
               </div>
             </div>
 
-            <!-- Price (optional, no ROI) -->
-            <div class="module" id="priceModule">
-              <div class="moduleTitle">
-                <b>Raw price</b>
-                <span class="pill2" id="pricePill">Optional</span>
-              </div>
-
-              <div class="fieldRow">
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <label class="small">Currency</label>
-                  <select class="input" id="currencySel">
-                    <option value="GBP" selected>GBP (£)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="USD">USD ($)</option>
-                  </select>
-                </div>
-
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <label class="small">Override (manual)</label>
-                  <input class="input" id="rawOverride" type="number" min="0" step="0.01" placeholder="Auto…" />
-                </div>
-              </div>
-
-              <div class="grid2" style="margin-top:12px;">
-                <div class="cell"><span>Raw (est.)</span><b id="rawVal">—</b></div>
-                <div class="cell"><span>Source</span><b id="srcVal">—</b></div>
-                <div class="cell"><span>Match</span><b id="matchVal">—</b></div>
-                <div class="cell"><span>Method</span><b id="methodVal">—</b></div>
-              </div>
-
-              <div class="small" style="margin-top:10px;" id="priceNote">
-                Pricing is optional. If live pricing is noisy for your sources, rely on manual override.
-              </div>
-            </div>
-
             <!-- Export -->
             <div class="module">
               <div class="moduleTitle">
                 <b>Export</b>
                 <span class="pill2">Report</span>
               </div>
-              <div class="fieldRow">
+              <div class="row" style="justify-content:flex-start;">
                 <button class="btn secondary" id="downloadBtn" type="button" disabled>Download JSON report</button>
               </div>
               <div class="small" style="margin-top:10px;">
@@ -1168,26 +1082,18 @@
     const modeStrict = document.getElementById('modeStrict');
 
     const statusEl = document.getElementById('status');
-    const identifyBtn = document.getElementById('identifyBtn');
     const runBtn = document.getElementById('runBtn');
 
     const step1 = document.getElementById('step1');
     const step2 = document.getElementById('step2');
     const step3 = document.getElementById('step3');
 
-    // Right-side modules
-    const identPill = document.getElementById('identPill');
-    const identText = document.getElementById('identText');
-    const gamePill  = document.getElementById('gamePill');
-    const cardPill  = document.getElementById('cardPill');
-    const candidateWrap = document.getElementById('candidateWrap');
-
+    // Report UI
     const resultPill = document.getElementById('resultPill');
     const gradeBig = document.getElementById('gradeBig');
     const gradeLabel = document.getElementById('gradeLabel');
     const rangePill = document.getElementById('rangePill');
     const confBar = document.getElementById('confBar');
-
     const confidenceBadge = document.getElementById('confidenceBadge');
 
     const centEl = document.getElementById('cent');
@@ -1196,20 +1102,9 @@
     const surfEl = document.getElementById('surf');
     const issuesEl = document.getElementById('issues');
 
-    // New report elements
     const summaryChips = document.getElementById("summaryChips");
     const whyList = document.getElementById("whyList");
     const fixList = document.getElementById("fixList");
-
-    // Price module
-    const currencySel = document.getElementById("currencySel");
-    const rawOverride = document.getElementById("rawOverride");
-    const pricePill = document.getElementById("pricePill");
-    const rawVal = document.getElementById("rawVal");
-    const srcVal = document.getElementById("srcVal");
-    const matchVal = document.getElementById("matchVal");
-    const methodVal = document.getElementById("methodVal");
-    const priceNote = document.getElementById("priceNote");
 
     const downloadBtn = document.getElementById('downloadBtn');
     const demoBtn = document.getElementById('demoBtn');
@@ -1240,9 +1135,6 @@
     let backFile  = null;
 
     // state
-    let ident = null;
-    let identCandidates = [];
-    let price = null;
     let gradeReport = null;
     let fullReport = null;
 
@@ -1276,9 +1168,8 @@
     }
 
     function updateButtons(){
-      identifyBtn.disabled = !canProceed();
       runBtn.disabled = !canProceed();
-      if (canProceed()) setStatus("Ready. Identify card or generate report.");
+      if (canProceed()) setStatus("Ready. Generate your pre-grade report.");
       else if (frontFile || backFile) setStatus("Add the missing side.");
       else setStatus("Upload/capture front + back to begin.");
     }
@@ -1291,19 +1182,9 @@
       [...cornerF, ...cornerB].forEach(el=>el.style.opacity = "0.12");
     }
 
-    function resetRight(){
-      ident = null;
-      identCandidates = [];
-      price = null;
+    function resetReport(){
       gradeReport = null;
       fullReport = null;
-
-      identPill.textContent = "Waiting…";
-      identText.textContent = "Upload both sides, then identify the card.";
-      gamePill.textContent = "Game: —";
-      cardPill.textContent = "Card: —";
-      candidateWrap.style.display = "none";
-      candidateWrap.innerHTML = "";
 
       resultPill.textContent = "—";
       gradeBig.innerHTML = `— <small>Upload both</small>`;
@@ -1320,20 +1201,23 @@
       whyList.innerHTML = `<li>—</li>`;
       fixList.innerHTML = `<li>—</li>`;
 
-      // price block
-      pricePill.textContent = "Optional";
-      rawVal.textContent = srcVal.textContent = matchVal.textContent = methodVal.textContent = "—";
-
       downloadBtn.disabled = true;
       resetOverlays();
       updateSteps();
     }
 
     function setPreview(imgEl, fileObj, metaEl, tinyEl){
+      // revoke previous preview URL if we stored one
+      if (imgEl.dataset.url) {
+        try { URL.revokeObjectURL(imgEl.dataset.url); } catch {}
+        imgEl.dataset.url = "";
+      }
       const url = URL.createObjectURL(fileObj);
+      imgEl.dataset.url = url;
+
       imgEl.classList.remove("is-placeholder");
       imgEl.src = url;
-      imgEl.onload = () => URL.revokeObjectURL(url);
+
       metaEl.textContent = fileLabel(fileObj);
       tinyEl.textContent = fileLabel(fileObj);
     }
@@ -1343,6 +1227,7 @@
         frontFile = null;
         frontCamInput.value = "";
         frontFileInput.value = "";
+        if (frontImg.dataset.url) { try { URL.revokeObjectURL(frontImg.dataset.url); } catch {} frontImg.dataset.url = ""; }
         frontImg.classList.add("is-placeholder");
         frontImg.src = silhouetteSvg("Front");
         frontMeta.textContent = "—";
@@ -1351,12 +1236,13 @@
         backFile = null;
         backCamInput.value = "";
         backFileInput.value = "";
+        if (backImg.dataset.url) { try { URL.revokeObjectURL(backImg.dataset.url); } catch {} backImg.dataset.url = ""; }
         backImg.classList.add("is-placeholder");
         backImg.src = silhouetteSvg("Back");
         backMeta.textContent = "—";
         backTiny.textContent = "—";
       }
-      resetRight();
+      resetReport();
       updateButtons();
       updateSteps();
     }
@@ -1385,7 +1271,7 @@
       if (!f || !f.type?.startsWith("image/")) return toastShow("Front: choose an image file.");
       frontFile = f;
       setPreview(frontImg, f, frontMeta, frontTiny);
-      resetRight();
+      resetReport();
       updateButtons();
       updateSteps();
       toastShow("Front ready.");
@@ -1394,7 +1280,7 @@
       if (!f || !f.type?.startsWith("image/")) return toastShow("Back: choose an image file.");
       backFile = f;
       setPreview(backImg, f, backMeta, backTiny);
-      resetRight();
+      resetReport();
       updateButtons();
       updateSteps();
       toastShow("Back ready.");
@@ -1429,7 +1315,7 @@
     // Mode change resets
     [modeFast, modeStrict].forEach(el=>{
       el.addEventListener("change", ()=>{
-        resetRight();
+        resetReport();
         updateButtons();
         toastShow(modeFast.checked ? "Mode: Fast" : "Mode: Strict");
       });
@@ -1520,106 +1406,6 @@
       } finally { clearTimeout(t); }
     }
 
-    // Candidate chooser
-    function renderCandidates(cands){
-      candidateWrap.style.display = "block";
-      candidateWrap.innerHTML = "";
-
-      const wrap = document.createElement("div");
-      wrap.style.display = "grid";
-      wrap.style.gap = "10px";
-
-      cands.slice(0,5).forEach((c)=>{
-        const btn = document.createElement("button");
-        btn.className = "btn secondary";
-        btn.type = "button";
-        btn.style.justifyContent = "space-between";
-        btn.style.padding = "12px 12px";
-        btn.innerHTML = `<span style="text-align:left; display:flex; flex-direction:column; gap:2px;">
-            <span style="font-weight:820; color:var(--fg)">${c.displayName || c.name || "Candidate"}</span>
-            <span style="font-size:12px; color:var(--muted)">${c.set || ""} ${c.collectorNumber ? "· #"+c.collectorNumber : ""} ${c.variant ? "· "+c.variant : ""}</span>
-          </span>
-          <span class="pill2">${Math.round((c.confidence||0)*100)}%</span>`;
-        btn.addEventListener("click", async ()=>{
-          ident = c;
-          identCandidates = cands;
-          identPill.textContent = "Selected";
-          identText.textContent = "Card selected.";
-          gamePill.textContent = `Game: ${c.game || "—"}`;
-          cardPill.textContent = `Card: ${c.displayName || c.name || "—"}`;
-          toastShow("Selected candidate.");
-          await fetchPriceAndUpdate();
-        });
-        wrap.appendChild(btn);
-      });
-
-      candidateWrap.appendChild(wrap);
-    }
-
-    // Money formatting
-    function currencySymbol(code){
-      return code === "GBP" ? "£" : code === "EUR" ? "€" : "$";
-    }
-    function formatMoney(v, code){
-      if (typeof v !== "number" || !isFinite(v)) return "—";
-      const sym = currencySymbol(code);
-      return `${sym}${v.toFixed(2)}`;
-    }
-
-    // Price (optional)
-    function applyPriceUI(){
-      const cur = currencySel.value;
-
-      const manual = rawOverride.value !== "" ? Number(rawOverride.value) : null;
-      const raw = (manual != null && isFinite(manual))
-        ? manual
-        : (price?.converted?.[cur]?.raw ?? (price?.raw != null && price?.currency === cur ? price.raw : null));
-
-      rawVal.textContent = raw != null ? formatMoney(raw, cur) : "—";
-      srcVal.textContent = price?.source || (manual != null ? "Manual" : "—");
-      matchVal.textContent = price?.picked?.name ? (price.picked.name + (price.picked.number ? ` · #${price.picked.number}` : "")) : "—";
-      methodVal.textContent = price?.pricingMethod || (manual != null ? "Override" : "—");
-    }
-
-    currencySel.addEventListener("change", applyPriceUI);
-    rawOverride.addEventListener("input", ()=>{
-      pricePill.textContent = rawOverride.value !== "" ? "Manual override" : (price?.source ? "Live" : "Optional");
-      applyPriceUI();
-    });
-
-    async function fetchPriceAndUpdate(){
-      if (!ident) return;
-      // If user set manual override, don't force live pricing.
-      if (rawOverride.value !== "") { applyPriceUI(); return; }
-
-      pricePill.textContent = "Pricing…";
-      devNote.textContent = "Last /api/price response";
-      setDev("Pricing…", {});
-
-      const { ok, status, json } = await fetchJson("/api/price", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ card: ident }),
-        timeoutMs: 25000
-      });
-
-      setDev(String(status).startsWith("FETCH") ? "Price error" : `Price HTTP ${status}`, json);
-
-      if (!ok){
-        pricePill.textContent = "Price failed";
-        price = null;
-        priceNote.textContent = "Live pricing failed. Use manual override if you want a raw value here.";
-        applyPriceUI();
-        return;
-      }
-
-      price = json;
-      pricePill.textContent = json?.source ? `Live: ${json.source}` : "Live: OK";
-      priceNote.textContent = json?.note ? json.note : "Live raw price (best effort).";
-      applyPriceUI();
-    }
-
-    // Overlay mapping (simple + understandable)
     function confToLabel(c){
       const v = Math.max(0, Math.min(1, Number(c || 0)));
       if (v >= 0.78) return {key:"good", icon:"✓", label:"High"};
@@ -1636,7 +1422,7 @@
       // normalize: assume 1..10
       const n = (x) => Math.max(0, Math.min(1, (Number(x) || 0) / 10));
 
-      const cornerOpacity = 0.06 + (1 - n(corners)) * 0.55;  // worse corners -> stronger overlay
+      const cornerOpacity = 0.06 + (1 - n(corners)) * 0.55;
       const edgeOpacity   = 0.05 + (1 - n(edges)) * 0.55;
       const surfOpacity   = 0.04 + (1 - n(surface)) * 0.42;
 
@@ -1651,7 +1437,6 @@
       ovSurfaceF.style.opacity = String(surfOpacity);
       ovSurfaceB.style.opacity = String(surfOpacity);
 
-      // Labels
       const worst = [
         {k:"Corners", v:corners},
         {k:"Edges", v:edges},
@@ -1666,7 +1451,6 @@
       backOverlay.classList.add("show");
     }
 
-    // Pre-grade UI
     function setPreGradeUI(rep){
       const ml = Number(rep.mostLikely ?? 0);
       const label = rep.label || "";
@@ -1706,7 +1490,7 @@
         issuesEl.innerHTML = "<li>No issues returned.</li>";
       }
 
-      // Collector summary chips (clear + concise)
+      // Summary chips
       summaryChips.innerHTML = "";
       const addChip = (k, v) => {
         const el = document.createElement("span");
@@ -1720,7 +1504,7 @@
       addChip("Confidence", cInfo.label);
       addChip("Strict", modeStrict.checked ? "On" : "Off");
 
-      // “Why it won’t grade higher” = the weakest areas + model issues
+      // Weakest areas
       const pairs = [
         {k:"Centering", v:Number(sg.centering ?? 0)},
         {k:"Corners", v:Number(sg.corners ?? 0)},
@@ -1742,7 +1526,7 @@
         whyList.appendChild(li);
       });
 
-      // “What to reshoot / check” = photo guidance + likely physical checks
+      // What to reshoot / check
       fixList.innerHTML = "";
       const fixHints = [];
       if (conf < 0.55) fixHints.push("Reshoot: brighter light, less glare, sharper edges visible.");
@@ -1757,84 +1541,9 @@
         fixList.appendChild(li);
       });
 
-      // overlays
       overlayFromSubgrades(rep);
-
       resultPill.textContent = "Ready";
     }
-
-    // IDENTIFY
-    identifyBtn.addEventListener("click", async ()=>{
-      if (!canProceed()) return toastShow("Add front + back first.");
-
-      identPill.textContent = "Identifying…";
-      identText.textContent = "Reading card details from images…";
-      candidateWrap.style.display = "none";
-      candidateWrap.innerHTML = "";
-      gamePill.textContent = "Game: —";
-      cardPill.textContent = "Card: —";
-      ident = null;
-      identCandidates = [];
-      price = null;
-      applyPriceUI();
-
-      devNote.textContent = "Last /api/identify response";
-      setDev("Identifying…", {});
-
-      try{
-        const frontDataUrl = await fileToDataUrlCompressed(frontFile);
-        const backDataUrl  = await fileToDataUrlCompressed(backFile);
-
-        const { ok, status, json } = await fetchJson("/api/identify", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ frontDataUrl, backDataUrl }),
-          timeoutMs: 35000
-        });
-
-        setDev(String(status).startsWith("FETCH") ? "Identify error" : `Identify HTTP ${status}`, json);
-
-        if (!ok) throw new Error(json?.error || `Identify failed (HTTP ${status})`);
-
-        identCandidates = json?.candidates || [];
-        const extracted = json?.extracted || null;
-
-        if (!identCandidates.length){
-          identPill.textContent = "No match";
-          identText.textContent = extracted
-            ? `Extracted: ${extracted.name || "Unknown"} (${extracted.game || "unknown"}). No candidates found.`
-            : "No candidates returned.";
-          gamePill.textContent = `Game: ${extracted?.game || "—"}`;
-          cardPill.textContent = `Card: ${extracted?.name || "—"}`;
-          toastShow("No match (see Developer output).");
-          return;
-        }
-
-        const best = identCandidates[0];
-        const bestConf = best?.confidence ?? 0;
-
-        gamePill.textContent = `Game: ${best.game || "—"}`;
-        cardPill.textContent = `Card: ${best.displayName || best.name || "—"}`;
-
-        if (bestConf >= 0.88 && identCandidates.length === 1){
-          ident = best;
-          identPill.textContent = "Identified";
-          identText.textContent = "High confidence match.";
-          toastShow("Card identified.");
-          await fetchPriceAndUpdate();
-        } else {
-          identPill.textContent = "Choose match";
-          identText.textContent = "Multiple plausible printings. Pick the best match.";
-          renderCandidates(identCandidates);
-          toastShow("Select the correct printing.");
-        }
-      } catch (e){
-        console.error(e);
-        identPill.textContent = "Identify failed";
-        identText.textContent = "Couldn’t identify reliably. Try a clearer front photo (name + set/number visible).";
-        toastShow(e.message || "Identify failed.");
-      }
-    });
 
     // PRE-GRADE
     runBtn.addEventListener("click", async ()=>{
@@ -1842,7 +1551,6 @@
 
       setStatus("Preparing images…");
       runBtn.disabled = true;
-      identifyBtn.disabled = true;
       toastShow("Generating report…");
 
       devNote.textContent = "Last /api/grade response";
@@ -1870,18 +1578,10 @@
         toastShow("Report ready.");
         setStatus("Done.");
 
-        if (ident) await fetchPriceAndUpdate();
-        else applyPriceUI();
-
         fullReport = {
           createdAt: new Date().toISOString(),
           inputs: { strict: modeStrict.checked, fast: modeFast.checked },
-          identification: ident || null,
-          identificationCandidates: identCandidates || [],
-          preGrade: gradeReport,
-          price: price || null,
-          priceOverride: rawOverride.value !== "" ? Number(rawOverride.value) : null,
-          currency: currencySel.value
+          preGrade: gradeReport
         };
 
         downloadBtn.disabled = false;
@@ -1892,7 +1592,6 @@
         setStatus("Error. Try clearer photos.");
       } finally {
         runBtn.disabled = !canProceed();
-        identifyBtn.disabled = !canProceed();
         updateSteps();
       }
     });
@@ -1912,12 +1611,7 @@
     });
 
     // Init
-    function setPreviewPlaceholders(){
-      frontImg.src = silhouetteSvg("Front");
-      backImg.src  = silhouetteSvg("Back");
-    }
-    setPreviewPlaceholders();
-    resetRight();
+    resetReport();
     updateButtons();
     updateSteps();
     setDev("Idle", {});
