@@ -7,7 +7,7 @@
   <title>grd. — Pre-Screen (AI)</title>
   <meta name="description" content="Pre-screen front + back photos to decide if a card is worth submitting to grd." />
 
-  <!-- Favicons -->
+  <!-- Favicons (make sure these files actually exist in /public) -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -106,6 +106,7 @@
     }
     .panel:nth-child(2){animation-delay:.06s}
     @keyframes inUp{ to{transform: translateY(0); opacity:1;} }
+
     .panel::before{
       content:"";
       position:absolute;
@@ -349,7 +350,7 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       position:relative;
-      flex-wrap:wrap;
+      flex-wrap:wrap; /* FIX: prevents cut-off on desktop */
     }
     .cap b{color:var(--fg); font-weight:760}
     .cap .left{
@@ -586,6 +587,43 @@
       flex:0 0 auto;
     }
 
+    /* Debug drawer */
+    details.debug{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius: 16px;
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+    details.debug summary{
+      cursor:pointer;
+      font-weight:780;
+      color: var(--fg);
+      letter-spacing:-0.01em;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      list-style:none;
+    }
+    details.debug summary::-webkit-details-marker{display:none;}
+    pre.debugOut{
+      margin:10px 0 0;
+      padding:10px;
+      border-radius: 14px;
+      border:1px solid rgba(11,15,20,.08);
+      background: rgba(255,255,255,.75);
+      color: rgba(11,15,20,.86);
+      overflow:auto;
+      max-height: 280px;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     @media (prefers-reduced-motion: reduce){
       *{animation:none !important; transition:none !important;}
       .panel{opacity:1; transform:none;}
@@ -608,8 +646,8 @@
           <div class="inner">
             <h1>Decide if it’s worth submitting.</h1>
             <p class="sub">
-              Upload <b>front + back</b> photos. We identify the card, estimate a grade range, and compute a submission ROI
-              using UK/EU-leaning price sources (GBP default). No “official grades” — just a serious pre-screen.
+              Upload <b>front + back</b> photos. We identify the card, estimate a grade range, and compute a submission ROI.
+              GBP default. No “official grades” — just a serious pre-screen.
             </p>
 
             <div class="stepper" aria-label="Steps">
@@ -670,11 +708,11 @@
                 </div>
               </div>
 
-              <!-- Hidden inputs -->
+              <!-- Hidden inputs (camera + file) -->
               <input id="frontCamInput" type="file" accept="image/*" capture="environment" />
-              <input id="backCamInput" type="file" accept="image/*" capture="environment" />
+              <input id="backCamInput"  type="file" accept="image/*" capture="environment" />
               <input id="frontFileInput" type="file" accept="image/*" />
-              <input id="backFileInput" type="file" accept="image/*" />
+              <input id="backFileInput"  type="file" accept="image/*" />
             </div>
 
             <div class="previewWrap" aria-label="Previews">
@@ -711,6 +749,19 @@
                 <button class="btn" id="runBtn" type="button" disabled>Run pre-screen</button>
               </div>
             </div>
+
+            <details class="debug" id="devDrawer">
+              <summary>
+                <span>Developer output</span>
+                <span class="pill2" id="devPill">Idle</span>
+              </summary>
+              <div class="small" id="devNote" style="margin-top:8px;">Shows the last API status + body so you can see “No match” details immediately.</div>
+              <pre class="debugOut" id="devOut">{}</pre>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <button class="btn secondary" id="copyDev" type="button">Copy JSON</button>
+                <button class="btn secondary" id="clearDev" type="button">Clear</button>
+              </div>
+            </details>
 
             <canvas id="cv" style="display:none;"></canvas>
           </div>
@@ -763,7 +814,7 @@
                 <div id="confBar"></div>
               </div>
               <div class="small" style="margin-top:8px;">
-                Confidence is an estimate of how stable the predicted range is (not an “official” guarantee).
+                Confidence estimates how stable the predicted range is (not an “official” guarantee).
               </div>
 
               <div class="grid2" style="margin-top:12px;">
@@ -824,7 +875,7 @@
               </div>
 
               <div class="small" style="margin-top:10px;" id="roiNote">
-                Uses live EU/UK-leaning pricing when available. Otherwise you can enter a raw value manually.
+                Uses live EU/UK-leaning pricing when available. Otherwise enter raw value manually.
               </div>
             </div>
 
@@ -903,6 +954,37 @@
       clearTimeout(toast._t);
       toast._t = setTimeout(()=>toast.classList.remove('show'), 2400);
     }
+
+    // Developer drawer
+    const devDrawer = document.getElementById("devDrawer");
+    const devPill = document.getElementById("devPill");
+    const devOut = document.getElementById("devOut");
+    const devNote = document.getElementById("devNote");
+    const copyDev = document.getElementById("copyDev");
+    const clearDev = document.getElementById("clearDev");
+
+    let lastDevPayload = {};
+    function setDev(statusLabel, payload){
+      devPill.textContent = statusLabel || "OK";
+      lastDevPayload = payload || {};
+      devOut.textContent = JSON.stringify(lastDevPayload, null, 2);
+      // auto-open if error-ish
+      if (String(statusLabel||"").toLowerCase().includes("error") || String(statusLabel||"").includes("HTTP")) {
+        devDrawer.open = true;
+      }
+    }
+    copyDev.addEventListener("click", async ()=>{
+      try{
+        await navigator.clipboard.writeText(JSON.stringify(lastDevPayload, null, 2));
+        toastShow("Copied.");
+      }catch(e){
+        toastShow("Copy failed (browser blocked).");
+      }
+    });
+    clearDev.addEventListener("click", ()=>{
+      setDev("Idle", {});
+      toastShow("Cleared dev output.");
+    });
 
     // Placeholder silhouette with grd. monogram
     const silhouetteSvg = (side) => {
@@ -1014,7 +1096,6 @@
     const roiNote = document.getElementById('roiNote');
 
     const downloadBtn = document.getElementById('downloadBtn');
-
     const demoBtn = document.getElementById('demoBtn');
 
     // Canvas for compression
@@ -1049,18 +1130,15 @@
     }
 
     function updateSteps(){
-      // front done
       if (frontFile) { step1.classList.add('done'); step1.classList.remove('active'); }
       else { step1.classList.remove('done'); step1.classList.add('active'); }
 
-      // back active if front present
       if (frontFile && !backFile) { step2.classList.add('active'); }
       else { step2.classList.remove('active'); }
 
       if (backFile) step2.classList.add('done');
       else step2.classList.remove('done');
 
-      // results
       if (gradeReport) { step3.classList.add('done'); step3.classList.remove('active'); }
       else if (frontFile && backFile) step3.classList.add('active');
       else step3.classList.remove('active');
@@ -1281,6 +1359,28 @@
       return cv.toDataURL("image/jpeg", q);
     }
 
+    // Fetch helpers (so it never “spins forever”)
+    async function fetchJson(url, { method="GET", headers={}, body=null, timeoutMs=25000 } = {}){
+      const controller = new AbortController();
+      const t = setTimeout(()=>controller.abort(), timeoutMs);
+      try{
+        const resp = await fetch(url, {
+          method,
+          headers,
+          body,
+          signal: controller.signal
+        });
+        const text = await resp.text().catch(()=> "");
+        let json = null;
+        try{ json = text ? JSON.parse(text) : null; }catch(e){ json = { _raw: text }; }
+        return { ok: resp.ok, status: resp.status, json };
+      } catch(e){
+        return { ok:false, status: "FETCH_ERR", json: { error: e?.name === "AbortError" ? "Request timed out" : String(e?.message || e) } };
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
     // Candidate chooser UI
     function renderCandidates(cands){
       candidateWrap.style.display = "block";
@@ -1290,7 +1390,7 @@
       wrap.style.display = "grid";
       wrap.style.gap = "10px";
 
-      cands.slice(0,5).forEach((c, idx)=>{
+      cands.slice(0,5).forEach((c)=>{
         const btn = document.createElement("button");
         btn.className = "btn secondary";
         btn.type = "button";
@@ -1317,19 +1417,16 @@
       candidateWrap.appendChild(wrap);
     }
 
-    // Pricing + ROI
+    // Pricing + ROI helpers
     function currencySymbol(code){
       return code === "GBP" ? "£" : code === "EUR" ? "€" : "$";
     }
-
     function formatMoney(v, code){
       if (typeof v !== "number" || !isFinite(v)) return "—";
       const sym = currencySymbol(code);
       return `${sym}${v.toFixed(2)}`;
     }
-
     function computeOutlook(roi){
-      // Simple thresholds (tune later)
       if (roi >= 25) return { key:"good", label:"Worth submitting" };
       if (roi >= 0)  return { key:"warn", label:"Borderline" };
       return { key:"bad", label:"Hold" };
@@ -1338,15 +1435,12 @@
     function applyROI(){
       const cur = currencySel.value;
       const fee = Math.max(0, Number(feeInput.value || 15));
-      const feeDisplay = (price?.converted?.[cur]?.fee ?? null);
 
-      // Determine raw value:
       const rawManual = rawOverride.value !== "" ? Number(rawOverride.value) : null;
       const raw = rawManual != null && isFinite(rawManual)
         ? rawManual
         : (price?.converted?.[cur]?.raw ?? null);
 
-      // Expected graded value:
       const ev = price?.converted?.[cur]?.evGraded ?? null;
 
       rawVal.textContent = raw != null ? formatMoney(raw, cur) : "—";
@@ -1366,7 +1460,6 @@
       roiVal.textContent = formatMoney(roi, cur);
       const outlook = computeOutlook(roi);
 
-      // reflect on main badge too (pre-screen)
       outlookBadge.className = `badge ${outlook.key}`;
       outlookBadge.innerHTML = `<strong>${outlook.key === "good" ? "✓" : outlook.key === "warn" ? "•" : "×"}</strong> ${outlook.label}`;
     }
@@ -1375,7 +1468,6 @@
     feeInput.addEventListener("input", ()=>{ applyROI(); });
     rawOverride.addEventListener("input", ()=>{ applyROI(); });
     pricingMode.addEventListener("change", ()=>{
-      // If manual, we skip live fetch unless already fetched
       if (pricingMode.value === "manual"){
         toastShow("Manual pricing: enter raw value to compute ROI.");
         roiPill.textContent = "Manual pricing";
@@ -1394,72 +1486,90 @@
         return;
       }
 
-      try{
-        identPill.textContent = "Pricing…";
-        const cur = currencySel.value;
+      identPill.textContent = "Pricing…";
+      devNote.textContent = "Last /api/price response";
+      setDev("Pricing…", {});
 
-        // Needs gradeReport distribution for EV; if not ready yet, price endpoint can still return raw
-        const dist = gradeReport?.distribution || null;
+      const dist = gradeReport?.distribution || null;
 
-        const resp = await fetch("/api/price", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({
-            card: ident,
-            currency: cur,
-            // Provide distribution if available for EV graded calculation
-            distribution: dist,
-            feeGBP: Number(feeInput.value || 15)
-          })
-        });
+      const { ok, status, json } = await fetchJson("/api/price", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          card: ident,
+          currency: currencySel.value,
+          distribution: dist,
+          feeGBP: Number(feeInput.value || 15)
+        }),
+        timeoutMs: 25000
+      });
 
-        const data = await resp.json().catch(()=> ({}));
-        if (!resp.ok) throw new Error(data?.error || `Pricing failed (HTTP ${resp.status})`);
+      setDev(String(status).startsWith("FETCH") ? "Price error" : `Price HTTP ${status}`, json);
 
-        price = data;
-        identPill.textContent = data.source ? `Price: ${data.source}` : "Price: OK";
-        identText.textContent = "Card identified and priced (where available).";
-        applyROI();
-      } catch (e){
-        console.error(e);
-        identPill.textContent = "Price unavailable";
-        identText.textContent = "Live pricing unavailable for this match. You can override raw value manually.";
+      if (!ok){
+        identPill.textContent = "Price failed";
+        identText.textContent = "Live pricing failed. Check JustTCG key + endpoint, or use manual raw override.";
         price = null;
         applyROI();
+        return;
       }
+
+      price = json;
+      identPill.textContent = json?.source ? `Price: ${json.source}` : "Price: OK";
+      identText.textContent = json?.note ? json.note : "Card priced (where available).";
+      applyROI();
     }
 
     // IDENTIFY
     identifyBtn.addEventListener("click", async ()=>{
       if (!canProceed()) return toastShow("Add front + back first.");
 
-      try{
-        identPill.textContent = "Identifying…";
-        identText.textContent = "Reading card details from images…";
-        candidateWrap.style.display = "none";
-        candidateWrap.innerHTML = "";
-        gamePill.textContent = "Game: —";
-        cardPill.textContent = "Card: —";
-        ident = null;
-        identCandidates = [];
-        price = null;
-        applyROI();
+      identPill.textContent = "Identifying…";
+      identText.textContent = "Reading card details from images…";
+      candidateWrap.style.display = "none";
+      candidateWrap.innerHTML = "";
+      gamePill.textContent = "Game: —";
+      cardPill.textContent = "Card: —";
+      ident = null;
+      identCandidates = [];
+      price = null;
+      applyROI();
 
+      devNote.textContent = "Last /api/identify response";
+      setDev("Identifying…", {});
+
+      try{
         const frontDataUrl = await fileToDataUrlCompressed(frontFile);
         const backDataUrl  = await fileToDataUrlCompressed(backFile);
 
-        const resp = await fetch("/api/identify", {
+        const { ok, status, json } = await fetchJson("/api/identify", {
           method: "POST",
           headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ frontDataUrl, backDataUrl })
+          body: JSON.stringify({ frontDataUrl, backDataUrl }),
+          timeoutMs: 35000
         });
-        const data = await resp.json().catch(()=> ({}));
-        if (!resp.ok) throw new Error(data?.error || `Identify failed (HTTP ${resp.status})`);
 
-        identCandidates = data.candidates || [];
-        if (!identCandidates.length) throw new Error("No candidates returned.");
+        setDev(String(status).startsWith("FETCH") ? "Identify error" : `Identify HTTP ${status}`, json);
 
-        // Auto-select if very confident
+        if (!ok){
+          throw new Error(json?.error || `Identify failed (HTTP ${status})`);
+        }
+
+        identCandidates = json?.candidates || [];
+        const extracted = json?.extracted || null;
+
+        // If no candidates, still show what we DID extract (so you can debug "No match")
+        if (!identCandidates.length){
+          identPill.textContent = "No match";
+          identText.textContent = extracted
+            ? `Extracted: ${extracted.name || "Unknown"} (${extracted.game || "unknown"}). No candidates from resolver.`
+            : "No candidates returned.";
+          gamePill.textContent = `Game: ${extracted?.game || "—"}`;
+          cardPill.textContent = `Card: ${extracted?.name || "—"}`;
+          toastShow("No match (see Developer output).");
+          return;
+        }
+
         const best = identCandidates[0];
         const bestConf = best?.confidence ?? 0;
 
@@ -1488,7 +1598,6 @@
 
     // PRE-SCREEN (grade + distribution + issues)
     function setPreScreenUI(rep){
-      // Main headline
       gradeBig.innerHTML = `${Number(rep.mostLikely).toFixed(1)} <small>${rep.label || ""}</small>`;
       gradeLabel.textContent = rep.label || "";
 
@@ -1496,13 +1605,11 @@
       const conf = Math.max(0, Math.min(1, Number(rep.confidence || 0)));
       confBar.style.width = `${Math.round(conf * 100)}%`;
 
-      // Subgrades
       centEl.textContent = Number(rep.subgrades?.centering ?? 0).toFixed(1);
       cornEl.textContent = Number(rep.subgrades?.corners ?? 0).toFixed(1);
       edgeEl.textContent = Number(rep.subgrades?.edges ?? 0).toFixed(1);
       surfEl.textContent = Number(rep.subgrades?.surface ?? 0).toFixed(1);
 
-      // Issues
       issuesEl.innerHTML = "";
       (rep.notes || []).slice(0,6).forEach(n=>{
         const li = document.createElement("li");
@@ -1529,35 +1636,38 @@
       identifyBtn.disabled = true;
       toastShow("Running pre-screen…");
 
+      devNote.textContent = "Last /api/grade response";
+      setDev("Grading…", {});
+
       try{
         const frontDataUrl = await fileToDataUrlCompressed(frontFile);
         const backDataUrl  = await fileToDataUrlCompressed(backFile);
 
         setStatus("Grading…");
 
-        const resp = await fetch("/api/grade", {
+        const { ok, status, json } = await fetchJson("/api/grade", {
           method: "POST",
           headers: {"Content-Type":"application/json"},
           body: JSON.stringify({
             frontDataUrl,
             backDataUrl,
             strict: modeStrict.checked
-          })
+          }),
+          timeoutMs: 35000
         });
 
-        const data = await resp.json().catch(()=> ({}));
-        if (!resp.ok) throw new Error(data?.error || `Grade failed (HTTP ${resp.status})`);
+        setDev(String(status).startsWith("FETCH") ? "Grade error" : `Grade HTTP ${status}`, json);
 
-        gradeReport = data;
-        setPreScreenUI(data);
+        if (!ok) throw new Error(json?.error || `Grade failed (HTTP ${status})`);
+
+        gradeReport = json;
+        setPreScreenUI(json);
         toastShow("Pre-screen complete.");
         setStatus("Done.");
 
-        // After grading, try pricing if identified (or attempt identify-lite based on grade? no)
         if (ident) await fetchPriceAndUpdate();
         else applyROI();
 
-        // Build export report
         fullReport = {
           createdAt: new Date().toISOString(),
           inputs: { strict: modeStrict.checked, fast: modeFast.checked },
@@ -1603,6 +1713,7 @@
     resetRight();
     updateButtons();
     updateSteps();
+    setDev("Idle", {});
   </script>
 </body>
 </html>
