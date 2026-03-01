@@ -624,6 +624,15 @@
       word-break: break-word;
     }
 
+    /* Manual details layout */
+    .grid3{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px 12px;
+      margin-top: 8px;
+    }
+    @media (max-width: 820px){ .grid3{grid-template-columns:1fr;} }
+
     @media (prefers-reduced-motion: reduce){
       *{animation:none !important; transition:none !important;}
       .panel{opacity:1; transform:none;}
@@ -790,78 +799,92 @@
               </div>
 
               <div id="candidateWrap" style="margin-top:10px; display:none;"></div>
+            </div>
 
-              <!-- Manual card details -->
-              <div class="module" style="margin-top:12px;">
-                <div class="moduleTitle">
-                  <b>Manual card details</b>
-                  <span class="pill2" id="manualPill">Optional</span>
+            <!-- Manual details (NEW) -->
+            <div class="module" id="manualModule">
+              <div class="moduleTitle">
+                <b>Manual card details</b>
+                <span class="pill2" id="manualPill">Optional</span>
+              </div>
+              <div class="small">
+                If AI identification or live pricing is off, enter details here and click <b>Use manual details</b>.
+                This will be used for pricing (and saved in export).
+              </div>
+
+              <div class="grid3">
+                <div>
+                  <label class="small">Game</label><br/>
+                  <select class="input" id="manGame">
+                    <option value="pokemon" selected>Pokemon</option>
+                    <option value="mtg">MTG</option>
+                    <option value="yugioh">Yu-Gi-Oh</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="small">Language</label><br/>
+                  <select class="input" id="manLang">
+                    <option value="English" selected>English</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="German">German</option>
+                    <option value="French">French</option>
+                    <option value="Italian">Italian</option>
+                    <option value="Spanish">Spanish</option>
+                  </select>
                 </div>
 
-                <div class="small">
-                  If identification or pricing matches the wrong item, enter details here to tighten pricing.
-                  Best: <b>Set + Number</b>.
+                <div>
+                  <label class="small">Name</label><br/>
+                  <input class="input" id="manName" placeholder="e.g. Cubone" />
+                </div>
+                <div>
+                  <label class="small">Set</label><br/>
+                  <input class="input" id="manSet" placeholder="e.g. Jungle" />
                 </div>
 
-                <div class="grid2" style="margin-top:10px;">
-                  <div class="cell" style="display:block;">
-                    <div class="small" style="margin-bottom:6px;">Game</div>
-                    <select class="input" id="mGame" style="width:100%;">
-                      <option value="">Auto</option>
-                      <option value="pokemon">Pokémon</option>
-                      <option value="mtg">Magic</option>
-                      <option value="yugioh">Yu-Gi-Oh!</option>
-                    </select>
-                  </div>
-
-                  <div class="cell" style="display:block;">
-                    <div class="small" style="margin-bottom:6px;">Condition</div>
-                    <select class="input" id="mCond" style="width:100%;">
-                      <option value="">Auto</option>
-                      <option value="near-mint">Near Mint</option>
-                      <option value="light-played">Lightly Played</option>
-                      <option value="moderate-played">Moderately Played</option>
-                      <option value="heavy-played">Heavily Played</option>
-                      <option value="damaged">Damaged</option>
-                    </select>
-                  </div>
-
-                  <div class="cell" style="display:block;">
-                    <div class="small" style="margin-bottom:6px;">Name</div>
-                    <input class="input" id="mName" placeholder="e.g. Cubone" style="width:100%;" />
-                  </div>
-
-                  <div class="cell" style="display:block;">
-                    <div class="small" style="margin-bottom:6px;">Set</div>
-                    <input class="input" id="mSet" placeholder="e.g. Jungle" style="width:100%;" />
-                  </div>
-
-                  <div class="cell" style="display:block;">
-                    <div class="small" style="margin-bottom:6px;">Number</div>
-                    <input class="input" id="mNum" placeholder="e.g. 50 or 11/108" style="width:100%;" />
-                  </div>
-
-                  <div class="cell" style="display:block;">
-                    <div class="small" style="margin-bottom:6px;">Printing / Variant</div>
-                    <input class="input" id="mVar" placeholder="e.g. Normal, Holo, Reverse" style="width:100%;" />
-                  </div>
+                <div>
+                  <label class="small">Collector #</label><br/>
+                  <input class="input" id="manNum" placeholder="e.g. 50 or 11/108" />
+                </div>
+                <div>
+                  <label class="small">Variant</label><br/>
+                  <select class="input" id="manVariant">
+                    <option value="">Unknown</option>
+                    <option value="Unlimited" selected>Unlimited</option>
+                    <option value="1st Edition">1st Edition</option>
+                    <option value="Holo">Holo</option>
+                    <option value="Reverse Holo">Reverse Holo</option>
+                    <option value="Full Art">Full Art</option>
+                    <option value="Secret Rare">Secret Rare</option>
+                  </select>
                 </div>
 
-                <div class="fieldRow" style="margin-top:10px;">
-                  <label class="badge" style="cursor:pointer;">
-                    <input id="mUse" type="checkbox" style="accent-color:#0b0f14; margin-right:8px;">
-                    <strong>Use manual</strong> for pricing
-                  </label>
-
-                  <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn secondary" id="mApplyBtn" type="button">Apply to pricing</button>
-                    <button class="btn soft" id="mClearBtn" type="button">Clear</button>
-                  </div>
+                <div>
+                  <label class="small">Condition (raw)</label><br/>
+                  <select class="input" id="manCond">
+                    <option value="Near Mint" selected>Near Mint</option>
+                    <option value="Lightly Played">Lightly Played</option>
+                    <option value="Moderately Played">Moderately Played</option>
+                    <option value="Heavily Played">Heavily Played</option>
+                    <option value="Damaged">Damaged</option>
+                  </select>
                 </div>
-
-                <div class="small" style="margin-top:10px;" id="mHint">
-                  Tip: entering <b>Set + Number</b> prevents “booster pack” mismatches.
+                <div>
+                  <label class="small">Printing</label><br/>
+                  <select class="input" id="manPrint">
+                    <option value="Normal" selected>Normal</option>
+                    <option value="Foil">Foil</option>
+                  </select>
                 </div>
+              </div>
+
+              <div class="fieldRow">
+                <button class="btn secondary" id="useManualBtn" type="button">Use manual details</button>
+                <button class="btn secondary" id="clearManualBtn" type="button">Clear manual</button>
+              </div>
+
+              <div class="small" id="manualHint" style="margin-top:8px;">
+                Tip: For Pokemon, the <b>collector #</b> is the strongest disambiguator (e.g. “50” for Jungle Cubone).
               </div>
             </div>
 
@@ -934,7 +957,7 @@
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                   <label class="small">Pricing mode</label>
                   <select class="input" id="pricingMode">
-                    <option value="live" selected>Live (EU/UK source)</option>
+                    <option value="live" selected>Live (source)</option>
                     <option value="manual">Manual (no live price)</option>
                   </select>
                 </div>
@@ -948,7 +971,7 @@
               </div>
 
               <div class="small" style="margin-top:10px;" id="roiNote">
-                Uses live EU/UK-leaning pricing when available. Otherwise enter raw value manually.
+                Uses live pricing when available. Otherwise enter raw value manually.
               </div>
             </div>
 
@@ -1141,18 +1164,6 @@
     const cardPill  = document.getElementById('cardPill');
     const candidateWrap = document.getElementById('candidateWrap');
 
-    // Manual card details
-    const mGame = document.getElementById('mGame');
-    const mCond = document.getElementById('mCond');
-    const mName = document.getElementById('mName');
-    const mSet  = document.getElementById('mSet');
-    const mNum  = document.getElementById('mNum');
-    const mVar  = document.getElementById('mVar');
-    const mUse  = document.getElementById('mUse');
-    const mApplyBtn = document.getElementById('mApplyBtn');
-    const mClearBtn = document.getElementById('mClearBtn');
-    const manualPill = document.getElementById('manualPill');
-
     const resultPill = document.getElementById('resultPill');
     const gradeBig = document.getElementById('gradeBig');
     const gradeLabel = document.getElementById('gradeLabel');
@@ -1182,6 +1193,19 @@
     const downloadBtn = document.getElementById('downloadBtn');
     const demoBtn = document.getElementById('demoBtn');
 
+    // Manual inputs
+    const manualPill = document.getElementById("manualPill");
+    const manGame = document.getElementById("manGame");
+    const manLang = document.getElementById("manLang");
+    const manName = document.getElementById("manName");
+    const manSet  = document.getElementById("manSet");
+    const manNum  = document.getElementById("manNum");
+    const manVariant = document.getElementById("manVariant");
+    const manCond = document.getElementById("manCond");
+    const manPrint = document.getElementById("manPrint");
+    const useManualBtn = document.getElementById("useManualBtn");
+    const clearManualBtn = document.getElementById("clearManualBtn");
+
     // Canvas for compression
     const cv = document.getElementById('cv');
 
@@ -1193,11 +1217,12 @@
     let backFile  = null;
 
     // identification + pricing state
-    let ident = null;          // chosen canonical card
+    let ident = null;          // chosen canonical card (or manual card)
     let identCandidates = [];  // possible matches
     let price = null;          // live price object
-    let gradeReport = null;    // pre-screen report (grade distribution etc.)
+    let gradeReport = null;    // pre-screen report
     let fullReport = null;     // combined exported report
+    let manualMeta = null;     // {condition, printing} etc for pricing
 
     function setStatus(text){
       statusEl.innerHTML = `<span class="dot"></span><span>${text}</span>`;
@@ -1236,80 +1261,6 @@
       else setStatus("Upload/capture front + back to begin.");
     }
 
-    function normalizeNumForQuery(v){
-      if (!v) return null;
-      const s = String(v).trim();
-      if (!s) return null;
-      return s;
-    }
-
-    function manualHasAnything(){
-      return !!(
-        mName.value.trim() ||
-        mSet.value.trim() ||
-        mNum.value.trim() ||
-        mVar.value.trim() ||
-        mGame.value ||
-        mCond.value
-      );
-    }
-
-    function setManualPill(){
-      if (!manualHasAnything()) manualPill.textContent = "Optional";
-      else manualPill.textContent = mUse.checked ? "Manual ON" : "Manual ready";
-    }
-
-    function buildManualCard(){
-      const card = {
-        game: (mGame.value || (ident?.game || "")).toLowerCase() || null,
-        name: mName.value.trim() || ident?.name || ident?.displayName || null,
-        set:  mSet.value.trim()  || ident?.set || null,
-        collectorNumber: normalizeNumForQuery(mNum.value.trim() || ident?.collectorNumber || null),
-        variant: mVar.value.trim() || ident?.variant || null,
-        condition: mCond.value || null
-      };
-      Object.keys(card).forEach(k => (card[k] == null || card[k] === "") && delete card[k]);
-      return card;
-    }
-
-    function fillManualFromCard(c){
-      if (!c) return;
-      if (!mGame.value) mGame.value = c.game || "";
-      if (!mName.value.trim()) mName.value = c.displayName || c.name || "";
-      if (!mSet.value.trim())  mSet.value  = c.set || "";
-      if (!mNum.value.trim())  mNum.value  = c.collectorNumber || "";
-      if (!mVar.value.trim())  mVar.value  = c.variant || "";
-      setManualPill();
-    }
-
-    [mGame,mCond,mName,mSet,mNum,mVar,mUse].forEach(el=>{
-      el.addEventListener("input", setManualPill);
-      el.addEventListener("change", setManualPill);
-    });
-
-    mApplyBtn.addEventListener("click", async ()=>{
-      if (!manualHasAnything()){
-        toastShow("Enter at least a card name (ideally set + number).");
-        return;
-      }
-      mUse.checked = true;
-      setManualPill();
-      toastShow("Manual details enabled for pricing.");
-      await fetchPriceAndUpdate();
-    });
-
-    mClearBtn.addEventListener("click", ()=>{
-      mGame.value = "";
-      mCond.value = "";
-      mName.value = "";
-      mSet.value  = "";
-      mNum.value  = "";
-      mVar.value  = "";
-      mUse.checked = false;
-      setManualPill();
-      toastShow("Manual details cleared.");
-    });
-
     function resetRight(){
       ident = null;
       identCandidates = [];
@@ -1337,16 +1288,6 @@
 
       rawVal.textContent = evVal.textContent = feeVal.textContent = roiVal.textContent = "—";
       downloadBtn.disabled = true;
-
-      // reset manual inputs
-      mGame.value = "";
-      mCond.value = "";
-      mName.value = "";
-      mSet.value  = "";
-      mNum.value  = "";
-      mVar.value  = "";
-      mUse.checked = false;
-      setManualPill();
 
       updateSteps();
     }
@@ -1501,7 +1442,7 @@
       });
     });
 
-    // Compression helper (keeps uploads stable)
+    // Compression helper
     async function fileToDataUrlCompressed(file){
       const blobUrl = URL.createObjectURL(file);
       const img = new Image();
@@ -1527,7 +1468,7 @@
       return cv.toDataURL("image/jpeg", q);
     }
 
-    // Fetch helpers (so it never “spins forever”)
+    // Fetch helpers (prevents infinite spinner)
     async function fetchJson(url, { method="GET", headers={}, body=null, timeoutMs=25000 } = {}){
       const controller = new AbortController();
       const t = setTimeout(()=>controller.abort(), timeoutMs);
@@ -1566,10 +1507,12 @@
           <span class="pill2">${Math.round((c.confidence||0)*100)}%</span>`;
         btn.addEventListener("click", async ()=>{
           ident = c;
-          fillManualFromCard(c);
           identCandidates = cands;
+          // clear manual meta unless user set it
+          if (!manualMeta) manualMeta = null;
+
           identPill.textContent = "Selected";
-          identText.textContent = "Card selected. Fetching live EU/UK price…";
+          identText.textContent = "Card selected. Fetching live price…";
           gamePill.textContent = `Game: ${c.game || "—"}`;
           cardPill.textContent = `Card: ${c.displayName || c.name || "—"}`;
           toastShow("Selected candidate.");
@@ -1616,7 +1559,7 @@
         roiNote.textContent =
           pricingMode.value === "manual"
             ? "Manual mode: enter a raw value, then run pre-screen to estimate EV."
-            : "Live pricing not available for this printing yet. You can enter a raw value manually.";
+            : "Live pricing not available for this printing yet. Use Manual card details or enter raw value manually.";
         return;
       }
 
@@ -1628,8 +1571,8 @@
       outlookBadge.innerHTML = `<strong>${outlook.key === "good" ? "✓" : outlook.key === "warn" ? "•" : "×"}</strong> ${outlook.label}`;
     }
 
-    currencySel.addEventListener("change", ()=>{ applyROI(); });
-    feeInput.addEventListener("input", ()=>{ applyROI(); });
+    currencySel.addEventListener("change", ()=>{ applyROI(); if (ident && pricingMode.value==="live") fetchPriceAndUpdate(); });
+    feeInput.addEventListener("input", ()=>{ applyROI(); if (ident && pricingMode.value==="live") fetchPriceAndUpdate(); });
     rawOverride.addEventListener("input", ()=>{ applyROI(); });
     pricingMode.addEventListener("change", ()=>{
       if (pricingMode.value === "manual"){
@@ -1643,15 +1586,7 @@
     });
 
     async function fetchPriceAndUpdate(){
-      const useManual = !!mUse?.checked;
-      const cardForPricing = useManual ? buildManualCard() : ident;
-
-      if (!cardForPricing?.name || !cardForPricing?.game){
-        price = null;
-        applyROI();
-        return;
-      }
-
+      if (!ident) return;
       if (pricingMode.value === "manual"){
         price = null;
         applyROI();
@@ -1664,15 +1599,19 @@
 
       const dist = gradeReport?.distribution || null;
 
+      // IMPORTANT: pass manualMeta so server can tighten matching (condition/printing)
+      const payload = {
+        card: ident,
+        currency: currencySel.value,
+        distribution: dist,
+        feeGBP: Number(feeInput.value || 15),
+        want: manualMeta ? { ...manualMeta } : null
+      };
+
       const { ok, status, json } = await fetchJson("/api/price", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-          card: cardForPricing,
-          currency: currencySel.value,
-          distribution: dist,
-          feeGBP: Number(feeInput.value || 15)
-        }),
+        body: JSON.stringify(payload),
         timeoutMs: 25000
       });
 
@@ -1680,7 +1619,7 @@
 
       if (!ok){
         identPill.textContent = "Price failed";
-        identText.textContent = "Live pricing failed. Check JustTCG key + endpoint, or use manual raw override.";
+        identText.textContent = "Live pricing failed. Use Manual card details or raw override.";
         price = null;
         applyROI();
         return;
@@ -1688,13 +1627,73 @@
 
       price = json;
       identPill.textContent = json?.source ? `Price: ${json.source}` : "Price: OK";
-
-      identText.textContent = useManual
-        ? "Pricing used your manual card details."
-        : (json?.note ? json.note : "Card priced (where available).");
-
+      identText.textContent = json?.note ? json.note : "Card priced (where available).";
       applyROI();
     }
+
+    // Manual details handlers (NEW)
+    function normalizeCollectorNumber(raw){
+      if (!raw) return null;
+      const s = String(raw).trim();
+      if (!s) return null;
+      if (s.includes("/")) return s.split("/")[0].trim();
+      return s;
+    }
+
+    useManualBtn.addEventListener("click", async ()=>{
+      const name = String(manName.value || "").trim();
+      if (!name){
+        toastShow("Enter at least a card name.");
+        return;
+      }
+
+      // Build a “card” object compatible with /api/price and your UI
+      const card = {
+        game: String(manGame.value || "pokemon"),
+        name,
+        set: String(manSet.value || "").trim() || null,
+        setCode: null,
+        collectorNumber: normalizeCollectorNumber(String(manNum.value || "").trim()) || null,
+        variant: String(manVariant.value || "").trim() || null,
+        language: String(manLang.value || "English"),
+        confidence: 1.0,
+        displayName: name,
+        displaySet: String(manSet.value || "").trim() || null,
+      };
+
+      manualMeta = {
+        condition: String(manCond.value || "Near Mint"),
+        printing: String(manPrint.value || "Normal")
+      };
+
+      ident = card;
+      identCandidates = [];
+      candidateWrap.style.display = "none";
+      candidateWrap.innerHTML = "";
+
+      manualPill.textContent = "In use";
+      identPill.textContent = "Manual";
+      gamePill.textContent = `Game: ${card.game}`;
+      cardPill.textContent = `Card: ${card.name}${card.set ? " ("+card.set+")" : ""}${card.collectorNumber ? " #"+card.collectorNumber : ""}`;
+
+      identText.textContent = "Using manual details. Fetching live price…";
+      toastShow("Manual details applied.");
+      await fetchPriceAndUpdate();
+    });
+
+    clearManualBtn.addEventListener("click", ()=>{
+      manName.value = "";
+      manSet.value = "";
+      manNum.value = "";
+      manVariant.value = "Unlimited";
+      manCond.value = "Near Mint";
+      manPrint.value = "Normal";
+      manLang.value = "English";
+      manGame.value = "pokemon";
+      manualMeta = null;
+      manualPill.textContent = "Optional";
+      toastShow("Manual cleared.");
+    });
 
     // IDENTIFY
     identifyBtn.addEventListener("click", async ()=>{
@@ -1753,9 +1752,8 @@
 
         if (bestConf >= 0.88 && identCandidates.length === 1){
           ident = best;
-          fillManualFromCard(best);
           identPill.textContent = "Identified";
-          identText.textContent = "High confidence match. Fetching live EU/UK price…";
+          identText.textContent = "High confidence match. Fetching live price…";
           toastShow("Card identified.");
           await fetchPriceAndUpdate();
         } else {
@@ -1767,7 +1765,7 @@
       } catch (e){
         console.error(e);
         identPill.textContent = "Identify failed";
-        identText.textContent = "Couldn’t identify reliably. Try a clearer front photo (name + set/number visible).";
+        identText.textContent = "Couldn’t identify reliably. Try a clearer front photo (name + set/number visible) or use Manual card details.";
         toastShow(e.message || "Identify failed.");
       }
     });
@@ -1849,10 +1847,7 @@
           inputs: { strict: modeStrict.checked, fast: modeFast.checked },
           identification: ident || null,
           identificationCandidates: identCandidates || [],
-          manual: {
-            enabledForPricing: !!mUse?.checked,
-            card: manualHasAnything() ? buildManualCard() : null
-          },
+          manualMeta: manualMeta || null,
           grade: gradeReport,
           price: price,
           roi: {
@@ -1894,7 +1889,6 @@
     updateButtons();
     updateSteps();
     setDev("Idle", {});
-    setManualPill();
   </script>
 </body>
 </html>
