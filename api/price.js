@@ -40,7 +40,6 @@ async function getFX(debug) {
     if (!r.ok) throw new Error(`ECB FX HTTP ${r.status}`);
 
     const xml = await r.text();
-
     const pick = (ccy) => {
       const re = new RegExp(`currency=['"]${ccy}['"]\\s+rate=['"]([0-9.]+)['"]`, "i");
       const m = xml.match(re);
@@ -120,12 +119,17 @@ function desiredPrintingFromVariant(variant) {
   if (!v) return "Normal";
   if (v.includes("reverse")) return "Reverse Holofoil";
   if (v.includes("holo") || v.includes("foil") || v.includes("etched")) return "Holofoil";
-  if (v.includes("1st")) return "1st Edition";
   return "Normal";
 }
 
-function desiredCondition() {
-  return "Near Mint";
+function desiredConditionFromWant(want) {
+  const w = String(want?.condition || "").trim();
+  return w || "Near Mint";
+}
+
+function desiredPrintingFromWantOrVariant(want, variant) {
+  const w = String(want?.printing || "").trim();
+  return w || desiredPrintingFromVariant(variant);
 }
 
 // Sealed / non-single filters (stop booster packs etc.)
@@ -137,9 +141,7 @@ function looksLikeSealedOrNonSingle(item) {
     "booster pack",
     "booster box",
     "display box",
-    "box",
     "case",
-    "pack",
     "tin",
     "bundle",
     "elite trainer box",
@@ -156,24 +158,53 @@ function looksLikeSealedOrNonSingle(item) {
     "promo pack",
   ];
 
-  // If it literally says "booster pack", it's not a single.
   if (bad.some((k) => name.includes(k))) return true;
   if (bad.some((k) => id.includes(k.replace(/\s+/g, "-")))) return true;
+
+  // Defensive: avoid generic “pack/box” matches only if also contains those sealed cues
+  if (name.includes("pack") && name.includes("booster")) return true;
+  if (name.includes("box") && name.includes("booster")) return true;
 
   return false;
 }
 
+// 1st edition / special edition guards (helps avoid £300+ hits when you want unlimited)
+function looksFirstEditionOrSpecial(item) {
+  const name = String(item?.name || "").toLowerCase();
+  const id = String(item?.id || item?.cardId || "").toLowerCase();
+  const needles = [
+    "1st edition",
+    "first edition",
+    "shadowless",
+    "special delivery",
+    "staff",
+    "prerelease",
+    "pre-release",
+    "world championship",
+    "winner",
+  ];
+  return needles.some((k) => name.includes(k) || id.includes(k.replace(/\s+/g, "-")));
+}
+function wantFirstEdition(card) {
+  const v = String(card?.variant || "").toLowerCase();
+  return v.includes("1st") || v.includes("first edition");
+}
+
 function pickBestVariantPrice(cardItem, wantPrinting, wantCondition) {
   const variants = Array.isArray(cardItem?.variants) ? cardItem.variants : [];
-  if (!variants.length) return null;
+  if (!variants.length) {
+    // sometimes API returns direct price fields
+    const direct = Number(cardItem?.price ?? cardItem?.marketPrice ?? cardItem?.avg ?? cardItem?.mid ?? cardItem?.low);
+    return isFinite(direct) ? direct : null;
+  }
 
   const wantP = String(wantPrinting || "").toLowerCase();
   const wantC = String(wantCondition || "").toLowerCase();
 
   const prices = (list) =>
     list
-      .map((v) => Number(v?.price))
-      .filter((p) => isFinite(p));
+      .map((v) => Number(v?.price ?? v?.marketPrice ?? v?.avg ?? v?.mid ?? v?.low))
+      .filter((p) => isFinite(p) && p > 0);
 
   const exact = variants.filter(
     (v) =>
@@ -248,19 +279,14 @@ async function justTCGSetLookup(gameId, setName, apiKey, debug) {
 }
 
 function getItemNumber(it) {
-  const n =
-    it?.number ??
-    it?.collectorNumber ??
-    it?.localId ??
-    it?.cardNumber ??
-    null;
+  const n = it?.number ?? it?.collectorNumber ?? it?.localId ?? it?.cardNumber ?? null;
   if (n == null) return null;
   const s = String(n).trim();
   if (!s || s.toLowerCase() === "n/a") return null;
   return s;
 }
 
-function scoreCandidate(it, wantName, wantSet, wantNum) {
+function scoreCandidate(it, wantName, wantSet, wantNum, wantsFirstEd) {
   // Higher = better
   let s = 0;
 
@@ -268,8 +294,12 @@ function scoreCandidate(it, wantName, wantSet, wantNum) {
   const st = String(it?.set_name || it?.set || it?.setName || "").toLowerCase();
   const num = getItemNumber(it);
 
-  // sealed penalty (hard filtered earlier, but keep defensive)
   if (looksLikeSealedOrNonSingle(it)) s -= 1000;
+
+  // penalize 1st edition / special when user doesn't want it
+  const isFirst = looksFirstEditionOrSpecial(it);
+  if (!wantsFirstEd && isFirst) s -= 220;
+  if (wantsFirstEd && isFirst) s += 60;
 
   // number match matters most when user supplied number
   if (wantNum && num && String(num) === String(wantNum)) s += 200;
@@ -295,7 +325,65 @@ function scoreCandidate(it, wantName, wantSet, wantNum) {
   return s;
 }
 
-async function justTCGCardsSearch(card, debug) {
+/**
+ * Robust price picker to avoid outliers:
+ * - compute a "best price" for the top-ranked candidates (top 6)
+ * - drop extreme outliers > 3x the minimum
+ * - choose median of remaining (more stable than min/max)
+ */
+function robustPickPriceFromCandidates(ranked, wantPrinting, wantCondition, debug) {
+  const top = ranked.slice(0, 6);
+  const rows = [];
+
+  for (const it of top) {
+    const p = pickBestVariantPrice(it, wantPrinting, wantCondition);
+    if (isFinite(p) && p > 0) {
+      rows.push({
+        id: it?.id || it?.cardId || null,
+        name: it?.name || null,
+        set: it?.set_name || it?.set || it?.setName || null,
+        number: getItemNumber(it),
+        price: p
+      });
+    }
+  }
+
+  debug.justtcg.priceCandidates = rows;
+
+  if (!rows.length) return { raw: null, picked: null, method: "none" };
+
+  const prices = rows.map(r => r.price).sort((a,b)=>a-b);
+  const min = prices[0];
+
+  // Outlier trim: keep <= 3x min (tuneable)
+  const trimmed = rows.filter(r => r.price <= min * 3.0);
+  debug.justtcg.priceHeuristic = {
+    min,
+    outlierFactor: 3.0,
+    before: rows.length,
+    after: trimmed.length
+  };
+
+  const use = trimmed.length ? trimmed : rows;
+
+  const sortedUse = [...use].sort((a,b)=>a.price-b.price);
+  const mid = Math.floor(sortedUse.length / 2);
+  const median = sortedUse.length % 2
+    ? sortedUse[mid].price
+    : (sortedUse[mid-1].price + sortedUse[mid].price) / 2;
+
+  // choose the candidate whose price is closest to median (stable)
+  let best = sortedUse[0];
+  let bestDist = Math.abs(best.price - median);
+  for (const r of sortedUse) {
+    const d = Math.abs(r.price - median);
+    if (d < bestDist) { best = r; bestDist = d; }
+  }
+
+  return { raw: best.price, picked: best, method: trimmed.length ? "trimmed-median" : "median" };
+}
+
+async function justTCGCardsSearch(card, want, debug) {
   const apiKey = process.env.JUSTTCG_API_KEY;
   if (!apiKey) return { ok: false, reason: "Missing JUSTTCG_API_KEY" };
 
@@ -306,15 +394,21 @@ async function justTCGCardsSearch(card, debug) {
   debug.justtcg.gameId = gameId;
   debug.justtcg.cardAttempts = [];
 
-  const wantCondition = desiredCondition();
-  const wantPrinting = desiredPrintingFromVariant(card?.variant);
+  const wantCondition = desiredConditionFromWant(want);
+  const wantPrinting = desiredPrintingFromWantOrVariant(want, card?.variant);
 
   const wantName = String(card?.name || "").trim().toLowerCase() || null;
   const wantSet = String(card?.set || "").trim().toLowerCase() || null;
   const wantNum = normalizeCollectorNumber(card?.collectorNumber);
+  const wantsFirstEd = wantFirstEdition(card);
+
+  debug.justtcg.want = { condition: wantCondition, printing: wantPrinting, wantsFirstEd };
 
   const setId = await justTCGSetLookup(gameId, card?.set, apiKey, debug);
   const base = "https://api.justtcg.com/v1/cards";
+
+  // IMPORTANT: your plan enforces limit 1..20
+  const LIMIT = "20";
 
   const attempts = [
     setId && wantNum
@@ -324,7 +418,7 @@ async function justTCGCardsSearch(card, debug) {
             game: gameId,
             set: setId,
             number: String(wantNum),
-            limit: "20",
+            limit: LIMIT,
             offset: "0",
             include_price_history: "false",
             include_statistics: "30d",
@@ -338,7 +432,7 @@ async function justTCGCardsSearch(card, debug) {
             game: gameId,
             set: setId,
             q: String(card.name).trim(),
-            limit: "20",
+            limit: LIMIT,
             offset: "0",
             include_price_history: "false",
             include_statistics: "30d",
@@ -351,7 +445,7 @@ async function justTCGCardsSearch(card, debug) {
           params: {
             game: gameId,
             q: [card.name, card.set, wantNum].filter(Boolean).join(" "),
-            limit: "20",
+            limit: LIMIT,
             offset: "0",
             include_price_history: "false",
             include_statistics: "30d",
@@ -364,7 +458,7 @@ async function justTCGCardsSearch(card, debug) {
           params: {
             game: gameId,
             q: String(card.name).trim(),
-            limit: "20",
+            limit: LIMIT,
             offset: "0",
             include_price_history: "false",
             include_statistics: "30d",
@@ -407,31 +501,42 @@ async function justTCGCardsSearch(card, debug) {
         if (nameMatch.length) filtered = nameMatch;
       }
 
+      // 4) if user does NOT want 1st edition, prefer non-1st
+      if (!wantsFirstEd) {
+        const nonFirst = filtered.filter((it) => !looksFirstEditionOrSpecial(it));
+        if (nonFirst.length) filtered = nonFirst;
+      }
+
       if (!filtered.length) continue;
 
       // Rank remaining candidates
       const ranked = [...filtered].sort(
-        (x, y) => scoreCandidate(y, wantName, wantSet, wantNum) - scoreCandidate(x, wantName, wantSet, wantNum)
+        (x, y) =>
+          scoreCandidate(y, wantName, wantSet, wantNum, wantsFirstEd) -
+          scoreCandidate(x, wantName, wantSet, wantNum, wantsFirstEd)
       );
-      const picked = ranked[0];
 
-      const raw = pickBestVariantPrice(picked, wantPrinting, wantCondition);
-      if (!isFinite(raw)) continue;
+      // Robust price to reduce “wrong-but-plausible” outliers
+      const robust = robustPickPriceFromCandidates(ranked, wantPrinting, wantCondition, debug);
+      if (!isFinite(robust.raw)) continue;
 
       // If API doesn’t provide currency, assume USD (common) — but allow override if present
-      const currency = String(picked?.currency || j?.currency || "USD").toUpperCase();
+      const currency = String(
+        ranked[0]?.currency || j?.currency || "USD"
+      ).toUpperCase();
 
       return {
         ok: true,
         value: {
           source: "JustTCG",
           currency,
-          raw,
+          raw: robust.raw,
+          pricingMethod: robust.method,
           picked: {
-            id: picked?.id || picked?.cardId || null,
-            name: picked?.name || null,
-            set: picked?.set_name || picked?.set || picked?.setName || null,
-            number: getItemNumber(picked),
+            id: robust.picked?.id || ranked[0]?.id || ranked[0]?.cardId || null,
+            name: robust.picked?.name || ranked[0]?.name || null,
+            set: robust.picked?.set || ranked[0]?.set_name || ranked[0]?.set || ranked[0]?.setName || null,
+            number: robust.picked?.number || getItemNumber(ranked[0]),
             want: { printing: wantPrinting, condition: wantCondition },
           },
         },
@@ -458,10 +563,14 @@ export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
-    const { card, distribution, feeGBP } = await readBody(req);
-    if (!card?.game || !card?.name) return json(res, 400, { error: "Missing card (game + name required)" });
+    // NEW: accept `want` from client (manual details) to tighten pricing match
+    const { card, distribution, feeGBP, want } = await readBody(req);
 
-    const live = await justTCGCardsSearch(card, debug);
+    if (!card?.game || !card?.name) {
+      return json(res, 400, { error: "Missing card (game + name required)" });
+    }
+
+    const live = await justTCGCardsSearch(card, want, debug);
 
     if (!live.ok) {
       return json(res, 200, {
@@ -499,6 +608,7 @@ export default async function handler(req, res) {
       currency: live.value.currency,
       evGraded,
       upliftModel: "conservative",
+      pricingMethod: live.value.pricingMethod || null,
       picked: live.value.picked,
       fx: { base: fx.base, GBP: fx.GBP, USD: fx.USD },
       converted: {},
