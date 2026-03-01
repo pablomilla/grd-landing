@@ -4,10 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#ffffff" />
-  <title>grd. — Pre-Screen (AI)</title>
-  <meta name="description" content="Pre-screen front + back photos to decide if a card is worth submitting to grd." />
+  <title>grd. — Pre-Grade (AI)</title>
+  <meta name="description" content="Pre-grade front + back photos to estimate likely grade + reasons before real submission." />
 
-  <!-- Favicons (make sure these files actually exist in /public) -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -221,7 +220,6 @@
       transform:none !important;
       box-shadow:none !important;
     }
-
     input[type="file"]{display:none;}
 
     .stepper{
@@ -307,22 +305,78 @@
       position:relative;
       transform: translateZ(0);
     }
-    .preview::before{
-      content:"";
+
+    /* --- Photo overlays (new) --- */
+    .overlay{
       position:absolute;
-      inset:-55%;
-      background: linear-gradient(120deg, transparent 38%, rgba(255,255,255,.55) 50%, transparent 62%);
-      transform: translateX(-35%) rotate(18deg);
-      animation: sheen 4.8s ease-in-out infinite;
+      inset:0;
       pointer-events:none;
-      opacity:.7;
+      display:flex;
+      align-items:stretch;
+      justify-content:stretch;
+      opacity:0;
+      transition: opacity .25s ease;
+    }
+    .overlay.show{opacity:1;}
+    .overlay .frame{
+      position:absolute;
+      inset:10px;
+      border-radius:18px;
+      border:1px solid rgba(11,15,20,.18);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+    }
+    .overlay .corner{
+      position:absolute;
+      width:70px; height:70px;
+      border:3px solid rgba(11,15,20,.85);
+      border-radius:18px;
+      opacity:.12; /* will be raised */
+      filter: drop-shadow(0 10px 20px rgba(11,15,20,.12));
+      background: rgba(255,255,255,.05);
+    }
+    .overlay .c1{top:12px; left:12px; border-right:none; border-bottom:none;}
+    .overlay .c2{top:12px; right:12px; border-left:none; border-bottom:none;}
+    .overlay .c3{bottom:12px; left:12px; border-right:none; border-top:none;}
+    .overlay .c4{bottom:12px; right:12px; border-left:none; border-top:none;}
+
+    .overlay .edgeBar{
+      position:absolute;
+      left:14px; right:14px;
+      height:10px;
+      border-radius:999px;
+      background: rgba(11,15,20,.75);
+      opacity:.06; /* will be raised */
+    }
+    .overlay .top{top:14px}
+    .overlay .bottom{bottom:14px}
+    .overlay .surface{
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(320px 220px at 30% 22%, rgba(255,255,255,.18), transparent 60%),
+        radial-gradient(420px 260px at 70% 32%, rgba(255,255,255,.12), transparent 62%),
+        radial-gradient(520px 360px at 55% 72%, rgba(255,255,255,.10), transparent 62%);
+      opacity:.06; /* will be raised */
       mix-blend-mode: screen;
     }
-    @keyframes sheen{
-      0%{transform: translateX(-55%) rotate(18deg);}
-      50%{transform: translateX(8%) rotate(18deg);}
-      100%{transform: translateX(55%) rotate(18deg);}
+    .overlayLabel{
+      position:absolute;
+      left:12px; bottom:12px;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      background: rgba(255,255,255,.72);
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      padding:8px 10px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      font-size:12px;
+      color:var(--muted);
+      box-shadow: 0 14px 40px rgba(11,15,20,.14);
     }
+    .overlayLabel b{color:var(--fg); font-weight:850}
+
     .img{
       width:100%;
       display:block;
@@ -476,6 +530,7 @@
       background: rgba(255,255,255,.58);
       font-size:13px;
       color:var(--muted);
+      align-items:center;
     }
     .cell b{color:var(--fg); font-weight:820}
 
@@ -587,7 +642,6 @@
       flex:0 0 auto;
     }
 
-    /* Debug drawer */
     details.debug{
       border:1px solid rgba(11,15,20,.10);
       border-radius: 16px;
@@ -624,14 +678,35 @@
       word-break: break-word;
     }
 
-    /* Manual details layout */
-    .grid3{
+    /* New: concise report blocks */
+    .reportBlock{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(255,255,255,.62);
       display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px 12px;
-      margin-top: 8px;
+      gap:10px;
+      margin-top:10px;
     }
-    @media (max-width: 820px){ .grid3{grid-template-columns:1fr;} }
+    .reportBlock h3{
+      margin:0;
+      font-size:13px;
+      letter-spacing:-0.02em;
+    }
+    .chips{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{
+      border:1px solid rgba(11,15,20,.10);
+      border-radius:999px;
+      padding:7px 9px;
+      font-size:12px;
+      color:var(--muted);
+      background: rgba(255,255,255,.65);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .chip b{color:var(--fg); font-weight:850}
+    .twoCol{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    @media (max-width: 520px){ .twoCol{grid-template-columns:1fr;} }
 
     @media (prefers-reduced-motion: reduce){
       *{animation:none !important; transition:none !important;}
@@ -645,31 +720,31 @@
   <div class="wrap">
     <header>
       <div class="logo">grd.</div>
-      <div class="pill">Pre-screen (front + back)</div>
+      <div class="pill">Pre-grade (front + back)</div>
     </header>
 
     <main>
-      <section class="grid" aria-label="AI pre-screening">
+      <section class="grid" aria-label="AI pre-grading">
         <!-- Left -->
         <div class="panel">
           <div class="inner">
-            <h1>Decide if it’s worth submitting.</h1>
+            <h1>Know what to expect before you submit.</h1>
             <p class="sub">
-              Upload <b>front + back</b> photos. We identify the card, estimate a grade range, and compute a submission ROI.
-              GBP default. No “official grades” — just a serious pre-screen.
+              Upload <b>front + back</b>. We identify the printing (when possible) and generate a
+              <b>clear pre-grade report</b>: likely grade, range, confidence, and the <b>reasons</b>.
             </p>
 
             <div class="stepper" aria-label="Steps">
               <div class="step active" id="step1"><span class="dot"></span><b>1</b> Front</div>
               <div class="step" id="step2"><span class="dot"></span><b>2</b> Back</div>
-              <div class="step" id="step3"><span class="dot"></span><b>3</b> Results</div>
+              <div class="step" id="step3"><span class="dot"></span><b>3</b> Report</div>
             </div>
 
             <div class="upload" id="drop">
               <div class="row">
                 <div style="max-width:58ch">
                   <div style="font-weight:820; letter-spacing:-0.02em;">Add both sides</div>
-                  <div class="hint">Tip: bright light, minimal glare, card fills frame.</div>
+                  <div class="hint">Bright light, minimal glare, card fills frame. Keep edges visible.</div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                   <button class="btn secondary" id="demoBtn" type="button">Use demo</button>
@@ -703,7 +778,7 @@
 
               <div class="row" style="margin-top:2px;">
                 <div class="hint">
-                  <b>Fast</b> compresses uploads. <b>Strict</b> is harsher with higher detail.
+                  <b>Fast</b> compresses uploads. <b>Strict</b> is harsher (better for near-mint screening).
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                   <label class="btn secondary" style="gap:8px;">
@@ -717,7 +792,6 @@
                 </div>
               </div>
 
-              <!-- Hidden inputs (camera + file) -->
               <input id="frontCamInput" type="file" accept="image/*" capture="environment" />
               <input id="backCamInput"  type="file" accept="image/*" capture="environment" />
               <input id="frontFileInput" type="file" accept="image/*" />
@@ -727,6 +801,20 @@
             <div class="previewWrap" aria-label="Previews">
               <div class="preview" aria-label="Front preview">
                 <img class="img is-placeholder" id="frontImg" alt="Front preview" />
+
+                <!-- NEW overlay -->
+                <div class="overlay" id="frontOverlay">
+                  <div class="surface" id="ovSurfaceF"></div>
+                  <div class="frame"></div>
+                  <div class="corner c1" id="ovCornerF"></div>
+                  <div class="corner c2" id="ovCornerF2"></div>
+                  <div class="corner c3" id="ovCornerF3"></div>
+                  <div class="corner c4" id="ovCornerF4"></div>
+                  <div class="edgeBar top" id="ovEdgeTopF"></div>
+                  <div class="edgeBar bottom" id="ovEdgeBotF"></div>
+                  <div class="overlayLabel"><b>Overlay</b> <span id="ovLabelF">—</span></div>
+                </div>
+
                 <div class="cap">
                   <div class="left"><b>Front</b> <span class="mini" id="frontMeta">—</span></div>
                   <div class="actions">
@@ -738,6 +826,20 @@
 
               <div class="preview" aria-label="Back preview">
                 <img class="img is-placeholder" id="backImg" alt="Back preview" />
+
+                <!-- NEW overlay -->
+                <div class="overlay" id="backOverlay">
+                  <div class="surface" id="ovSurfaceB"></div>
+                  <div class="frame"></div>
+                  <div class="corner c1" id="ovCornerB"></div>
+                  <div class="corner c2" id="ovCornerB2"></div>
+                  <div class="corner c3" id="ovCornerB3"></div>
+                  <div class="corner c4" id="ovCornerB4"></div>
+                  <div class="edgeBar top" id="ovEdgeTopB"></div>
+                  <div class="edgeBar bottom" id="ovEdgeBotB"></div>
+                  <div class="overlayLabel"><b>Overlay</b> <span id="ovLabelB">—</span></div>
+                </div>
+
                 <div class="cap">
                   <div class="left"><b>Back</b> <span class="mini" id="backMeta">—</span></div>
                   <div class="actions">
@@ -755,7 +857,7 @@
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="btn secondary" id="identifyBtn" type="button" disabled>Identify card</button>
-                <button class="btn" id="runBtn" type="button" disabled>Run pre-screen</button>
+                <button class="btn" id="runBtn" type="button" disabled>Generate pre-grade report</button>
               </div>
             </div>
 
@@ -764,7 +866,7 @@
                 <span>Developer output</span>
                 <span class="pill2" id="devPill">Idle</span>
               </summary>
-              <div class="small" id="devNote" style="margin-top:8px;">Shows the last API status + body so you can see “No match” details immediately.</div>
+              <div class="small" id="devNote" style="margin-top:8px;">Shows the last API status + body.</div>
               <pre class="debugOut" id="devOut">{}</pre>
               <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
                 <button class="btn secondary" id="copyDev" type="button">Copy JSON</button>
@@ -779,6 +881,7 @@
         <!-- Right -->
         <div class="panel">
           <div class="inner">
+
             <!-- Identification -->
             <div class="module" id="identModule">
               <div class="moduleTitle">
@@ -801,116 +904,26 @@
               <div id="candidateWrap" style="margin-top:10px; display:none;"></div>
             </div>
 
-            <!-- Manual details (NEW) -->
-            <div class="module" id="manualModule">
-              <div class="moduleTitle">
-                <b>Manual card details</b>
-                <span class="pill2" id="manualPill">Optional</span>
-              </div>
-              <div class="small">
-                If AI identification or live pricing is off, enter details here and click <b>Use manual details</b>.
-                This will be used for pricing (and saved in export).
-              </div>
-
-              <div class="grid3">
-                <div>
-                  <label class="small">Game</label><br/>
-                  <select class="input" id="manGame">
-                    <option value="pokemon" selected>Pokemon</option>
-                    <option value="mtg">MTG</option>
-                    <option value="yugioh">Yu-Gi-Oh</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="small">Language</label><br/>
-                  <select class="input" id="manLang">
-                    <option value="English" selected>English</option>
-                    <option value="Japanese">Japanese</option>
-                    <option value="German">German</option>
-                    <option value="French">French</option>
-                    <option value="Italian">Italian</option>
-                    <option value="Spanish">Spanish</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="small">Name</label><br/>
-                  <input class="input" id="manName" placeholder="e.g. Cubone" />
-                </div>
-                <div>
-                  <label class="small">Set</label><br/>
-                  <input class="input" id="manSet" placeholder="e.g. Jungle" />
-                </div>
-
-                <div>
-                  <label class="small">Collector #</label><br/>
-                  <input class="input" id="manNum" placeholder="e.g. 50 or 11/108" />
-                </div>
-                <div>
-                  <label class="small">Variant</label><br/>
-                  <select class="input" id="manVariant">
-                    <option value="">Unknown</option>
-                    <option value="Unlimited" selected>Unlimited</option>
-                    <option value="1st Edition">1st Edition</option>
-                    <option value="Holo">Holo</option>
-                    <option value="Reverse Holo">Reverse Holo</option>
-                    <option value="Full Art">Full Art</option>
-                    <option value="Secret Rare">Secret Rare</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="small">Condition (raw)</label><br/>
-                  <select class="input" id="manCond">
-                    <option value="Near Mint" selected>Near Mint</option>
-                    <option value="Lightly Played">Lightly Played</option>
-                    <option value="Moderately Played">Moderately Played</option>
-                    <option value="Heavily Played">Heavily Played</option>
-                    <option value="Damaged">Damaged</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="small">Printing</label><br/>
-                  <select class="input" id="manPrint">
-                    <option value="Normal" selected>Normal</option>
-                    <option value="Foil">Foil</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="fieldRow">
-                <button class="btn secondary" id="useManualBtn" type="button">Use manual details</button>
-                <button class="btn secondary" id="clearManualBtn" type="button">Clear manual</button>
-              </div>
-
-              <div class="small" id="manualHint" style="margin-top:8px;">
-                Tip: For Pokemon, the <b>collector #</b> is the strongest disambiguator (e.g. “50” for Jungle Cubone).
-              </div>
-            </div>
-
-            <!-- Pre-screen result -->
+            <!-- Pre-grade report -->
             <div class="module" id="resultModule">
               <div class="moduleTitle">
-                <b>Pre-screen</b>
+                <b>Pre-grade report</b>
                 <span class="pill2" id="resultPill">—</span>
               </div>
 
               <div class="topStat">
                 <div>
-                  <div class="small">Most likely grade</div>
+                  <div class="small">Expected grade</div>
                   <p class="bigGrade" id="gradeBig">— <small id="gradeLabel">Upload both</small></p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-                  <span class="badge" id="outlookBadge"><strong>—</strong> Outlook</span>
+                  <span class="badge" id="confidenceBadge"><strong>—</strong> Confidence</span>
                   <span class="pill2" id="rangePill">Range: —</span>
                 </div>
               </div>
 
               <div class="bar" aria-label="Confidence">
                 <div id="confBar"></div>
-              </div>
-              <div class="small" style="margin-top:8px;">
-                Confidence estimates how stable the predicted range is (not an “official” guarantee).
               </div>
 
               <div class="grid2" style="margin-top:12px;">
@@ -920,16 +933,36 @@
                 <div class="cell"><span>Surface</span><b id="surf">—</b></div>
               </div>
 
-              <ul class="list" id="issues" style="margin-top:12px;">
-                <li>Run pre-screen to see issues and decision guidance.</li>
-              </ul>
+              <!-- NEW: collector-style report -->
+              <div class="reportBlock" id="collectorReport">
+                <h3>Collector summary</h3>
+                <div class="chips" id="summaryChips"></div>
+
+                <div class="twoCol">
+                  <div>
+                    <h3 style="margin:0 0 8px;">Why it won’t grade higher</h3>
+                    <ul class="list" id="whyList" style="margin-top:0;"></ul>
+                  </div>
+                  <div>
+                    <h3 style="margin:0 0 8px;">What to reshoot / check</h3>
+                    <ul class="list" id="fixList" style="margin-top:0;"></ul>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:10px;">
+                <h3 style="margin:0 0 8px; font-size:13px; letter-spacing:-0.02em;">Notes</h3>
+                <ul class="list" id="issues" style="margin-top:0;">
+                  <li>Generate a pre-grade report to see reasons and guidance.</li>
+                </ul>
+              </div>
             </div>
 
-            <!-- ROI -->
-            <div class="module" id="roiModule">
+            <!-- Price (optional, no ROI) -->
+            <div class="module" id="priceModule">
               <div class="moduleTitle">
-                <b>ROI</b>
-                <span class="pill2" id="roiPill">GBP default</span>
+                <b>Raw price</b>
+                <span class="pill2" id="pricePill">Optional</span>
               </div>
 
               <div class="fieldRow">
@@ -943,39 +976,24 @@
                 </div>
 
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <label class="small">Submission fee</label>
-                  <input class="input" id="feeInput" type="number" min="0" step="0.5" value="15" />
-                </div>
-              </div>
-
-              <div class="fieldRow" style="margin-top:10px;">
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <label class="small">Raw value (override)</label>
+                  <label class="small">Override (manual)</label>
                   <input class="input" id="rawOverride" type="number" min="0" step="0.01" placeholder="Auto…" />
-                </div>
-
-                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                  <label class="small">Pricing mode</label>
-                  <select class="input" id="pricingMode">
-                    <option value="live" selected>Live (source)</option>
-                    <option value="manual">Manual (no live price)</option>
-                  </select>
                 </div>
               </div>
 
               <div class="grid2" style="margin-top:12px;">
                 <div class="cell"><span>Raw (est.)</span><b id="rawVal">—</b></div>
-                <div class="cell"><span>EV graded</span><b id="evVal">—</b></div>
-                <div class="cell"><span>Fee</span><b id="feeVal">—</b></div>
-                <div class="cell"><span>ROI</span><b id="roiVal">—</b></div>
+                <div class="cell"><span>Source</span><b id="srcVal">—</b></div>
+                <div class="cell"><span>Match</span><b id="matchVal">—</b></div>
+                <div class="cell"><span>Method</span><b id="methodVal">—</b></div>
               </div>
 
-              <div class="small" style="margin-top:10px;" id="roiNote">
-                Uses live pricing when available. Otherwise enter raw value manually.
+              <div class="small" style="margin-top:10px;" id="priceNote">
+                Pricing is optional. If live pricing is noisy for your sources, rely on manual override.
               </div>
             </div>
 
-            <!-- Download -->
+            <!-- Export -->
             <div class="module">
               <div class="moduleTitle">
                 <b>Export</b>
@@ -985,7 +1003,7 @@
                 <button class="btn secondary" id="downloadBtn" type="button" disabled>Download JSON report</button>
               </div>
               <div class="small" style="margin-top:10px;">
-                Reports are for pre-screening only. Final physical grade depends on inspection conditions.
+                This is a pre-grade estimate from photos. Final physical grade depends on inspection conditions.
               </div>
             </div>
 
@@ -1081,7 +1099,7 @@
       toastShow("Cleared dev output.");
     });
 
-    // Placeholder silhouette with grd. monogram
+    // Placeholder
     const silhouetteSvg = (side) => {
       const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
@@ -1170,41 +1188,46 @@
     const rangePill = document.getElementById('rangePill');
     const confBar = document.getElementById('confBar');
 
+    const confidenceBadge = document.getElementById('confidenceBadge');
+
     const centEl = document.getElementById('cent');
     const cornEl = document.getElementById('corn');
     const edgeEl = document.getElementById('edge');
     const surfEl = document.getElementById('surf');
     const issuesEl = document.getElementById('issues');
 
-    const outlookBadge = document.getElementById('outlookBadge');
+    // New report elements
+    const summaryChips = document.getElementById("summaryChips");
+    const whyList = document.getElementById("whyList");
+    const fixList = document.getElementById("fixList");
 
-    const currencySel = document.getElementById('currencySel');
-    const feeInput = document.getElementById('feeInput');
-    const rawOverride = document.getElementById('rawOverride');
-    const pricingMode = document.getElementById('pricingMode');
-
-    const rawVal = document.getElementById('rawVal');
-    const evVal  = document.getElementById('evVal');
-    const feeVal = document.getElementById('feeVal');
-    const roiVal = document.getElementById('roiVal');
-    const roiPill = document.getElementById('roiPill');
-    const roiNote = document.getElementById('roiNote');
+    // Price module
+    const currencySel = document.getElementById("currencySel");
+    const rawOverride = document.getElementById("rawOverride");
+    const pricePill = document.getElementById("pricePill");
+    const rawVal = document.getElementById("rawVal");
+    const srcVal = document.getElementById("srcVal");
+    const matchVal = document.getElementById("matchVal");
+    const methodVal = document.getElementById("methodVal");
+    const priceNote = document.getElementById("priceNote");
 
     const downloadBtn = document.getElementById('downloadBtn');
     const demoBtn = document.getElementById('demoBtn');
 
-    // Manual inputs
-    const manualPill = document.getElementById("manualPill");
-    const manGame = document.getElementById("manGame");
-    const manLang = document.getElementById("manLang");
-    const manName = document.getElementById("manName");
-    const manSet  = document.getElementById("manSet");
-    const manNum  = document.getElementById("manNum");
-    const manVariant = document.getElementById("manVariant");
-    const manCond = document.getElementById("manCond");
-    const manPrint = document.getElementById("manPrint");
-    const useManualBtn = document.getElementById("useManualBtn");
-    const clearManualBtn = document.getElementById("clearManualBtn");
+    // Overlays
+    const frontOverlay = document.getElementById("frontOverlay");
+    const backOverlay = document.getElementById("backOverlay");
+    const ovLabelF = document.getElementById("ovLabelF");
+    const ovLabelB = document.getElementById("ovLabelB");
+    const ovSurfaceF = document.getElementById("ovSurfaceF");
+    const ovSurfaceB = document.getElementById("ovSurfaceB");
+    const ovEdgeTopF = document.getElementById("ovEdgeTopF");
+    const ovEdgeBotF = document.getElementById("ovEdgeBotF");
+    const ovEdgeTopB = document.getElementById("ovEdgeTopB");
+    const ovEdgeBotB = document.getElementById("ovEdgeBotB");
+
+    const cornerF = [document.getElementById("ovCornerF"), document.getElementById("ovCornerF2"), document.getElementById("ovCornerF3"), document.getElementById("ovCornerF4")];
+    const cornerB = [document.getElementById("ovCornerB"), document.getElementById("ovCornerB2"), document.getElementById("ovCornerB3"), document.getElementById("ovCornerB4")];
 
     // Canvas for compression
     const cv = document.getElementById('cv');
@@ -1216,13 +1239,12 @@
     let frontFile = null;
     let backFile  = null;
 
-    // identification + pricing state
-    let ident = null;          // chosen canonical card (or manual card)
-    let identCandidates = [];  // possible matches
-    let price = null;          // live price object
-    let gradeReport = null;    // pre-screen report
-    let fullReport = null;     // combined exported report
-    let manualMeta = null;     // {condition, printing} etc for pricing
+    // state
+    let ident = null;
+    let identCandidates = [];
+    let price = null;
+    let gradeReport = null;
+    let fullReport = null;
 
     function setStatus(text){
       statusEl.innerHTML = `<span class="dot"></span><span>${text}</span>`;
@@ -1256,9 +1278,17 @@
     function updateButtons(){
       identifyBtn.disabled = !canProceed();
       runBtn.disabled = !canProceed();
-      if (canProceed()) setStatus("Ready. Identify card or run pre-screen.");
+      if (canProceed()) setStatus("Ready. Identify card or generate report.");
       else if (frontFile || backFile) setStatus("Add the missing side.");
       else setStatus("Upload/capture front + back to begin.");
+    }
+
+    function resetOverlays(){
+      [frontOverlay, backOverlay].forEach(o=>o.classList.remove("show"));
+      ovLabelF.textContent = "—";
+      ovLabelB.textContent = "—";
+      [ovSurfaceF, ovSurfaceB, ovEdgeTopF, ovEdgeBotF, ovEdgeTopB, ovEdgeBotB].forEach(el=>el.style.opacity = "0.06");
+      [...cornerF, ...cornerB].forEach(el=>el.style.opacity = "0.12");
     }
 
     function resetRight(){
@@ -1280,15 +1310,22 @@
       gradeLabel.textContent = "Upload both";
       rangePill.textContent = "Range: —";
       confBar.style.width = "0%";
-      outlookBadge.className = "badge";
-      outlookBadge.innerHTML = `<strong>—</strong> Outlook`;
+      confidenceBadge.className = "badge";
+      confidenceBadge.innerHTML = `<strong>—</strong> Confidence`;
 
       centEl.textContent = cornEl.textContent = edgeEl.textContent = surfEl.textContent = "—";
-      issuesEl.innerHTML = `<li>Run pre-screen to see issues and decision guidance.</li>`;
+      issuesEl.innerHTML = `<li>Generate a pre-grade report to see reasons and guidance.</li>`;
 
-      rawVal.textContent = evVal.textContent = feeVal.textContent = roiVal.textContent = "—";
+      summaryChips.innerHTML = "";
+      whyList.innerHTML = `<li>—</li>`;
+      fixList.innerHTML = `<li>—</li>`;
+
+      // price block
+      pricePill.textContent = "Optional";
+      rawVal.textContent = srcVal.textContent = matchVal.textContent = methodVal.textContent = "—";
+
       downloadBtn.disabled = true;
-
+      resetOverlays();
       updateSteps();
     }
 
@@ -1468,7 +1505,7 @@
       return cv.toDataURL("image/jpeg", q);
     }
 
-    // Fetch helpers (prevents infinite spinner)
+    // Fetch helper
     async function fetchJson(url, { method="GET", headers={}, body=null, timeoutMs=25000 } = {}){
       const controller = new AbortController();
       const t = setTimeout(()=>controller.abort(), timeoutMs);
@@ -1480,12 +1517,10 @@
         return { ok: resp.ok, status: resp.status, json };
       } catch(e){
         return { ok:false, status: "FETCH_ERR", json: { error: e?.name === "AbortError" ? "Request timed out" : String(e?.message || e) } };
-      } finally {
-        clearTimeout(t);
-      }
+      } finally { clearTimeout(t); }
     }
 
-    // Candidate chooser UI
+    // Candidate chooser
     function renderCandidates(cands){
       candidateWrap.style.display = "block";
       candidateWrap.innerHTML = "";
@@ -1502,17 +1537,14 @@
         btn.style.padding = "12px 12px";
         btn.innerHTML = `<span style="text-align:left; display:flex; flex-direction:column; gap:2px;">
             <span style="font-weight:820; color:var(--fg)">${c.displayName || c.name || "Candidate"}</span>
-            <span style="font-size:12px; color:var(--muted)">${c.displaySet || c.set || ""} ${c.collectorNumber ? "· #"+c.collectorNumber : ""} ${c.variant ? "· "+c.variant : ""}</span>
+            <span style="font-size:12px; color:var(--muted)">${c.set || ""} ${c.collectorNumber ? "· #"+c.collectorNumber : ""} ${c.variant ? "· "+c.variant : ""}</span>
           </span>
           <span class="pill2">${Math.round((c.confidence||0)*100)}%</span>`;
         btn.addEventListener("click", async ()=>{
           ident = c;
           identCandidates = cands;
-          // clear manual meta unless user set it
-          if (!manualMeta) manualMeta = null;
-
           identPill.textContent = "Selected";
-          identText.textContent = "Card selected. Fetching live price…";
+          identText.textContent = "Card selected.";
           gamePill.textContent = `Game: ${c.game || "—"}`;
           cardPill.textContent = `Card: ${c.displayName || c.name || "—"}`;
           toastShow("Selected candidate.");
@@ -1524,7 +1556,7 @@
       candidateWrap.appendChild(wrap);
     }
 
-    // Pricing + ROI helpers
+    // Money formatting
     function currencySymbol(code){
       return code === "GBP" ? "£" : code === "EUR" ? "€" : "$";
     }
@@ -1533,167 +1565,203 @@
       const sym = currencySymbol(code);
       return `${sym}${v.toFixed(2)}`;
     }
-    function computeOutlook(roi){
-      if (roi >= 25) return { key:"good", label:"Worth submitting" };
-      if (roi >= 0)  return { key:"warn", label:"Borderline" };
-      return { key:"bad", label:"Hold" };
-    }
 
-    function applyROI(){
+    // Price (optional)
+    function applyPriceUI(){
       const cur = currencySel.value;
-      const fee = Math.max(0, Number(feeInput.value || 15));
 
-      const rawManual = rawOverride.value !== "" ? Number(rawOverride.value) : null;
-      const raw = rawManual != null && isFinite(rawManual)
-        ? rawManual
-        : (price?.converted?.[cur]?.raw ?? null);
-
-      const ev = price?.converted?.[cur]?.evGraded ?? null;
+      const manual = rawOverride.value !== "" ? Number(rawOverride.value) : null;
+      const raw = (manual != null && isFinite(manual))
+        ? manual
+        : (price?.converted?.[cur]?.raw ?? (price?.raw != null && price?.currency === cur ? price.raw : null));
 
       rawVal.textContent = raw != null ? formatMoney(raw, cur) : "—";
-      evVal.textContent  = ev  != null ? formatMoney(ev, cur)  : "—";
-      feeVal.textContent = formatMoney(fee, cur);
-
-      if (raw == null || ev == null){
-        roiVal.textContent = "—";
-        roiNote.textContent =
-          pricingMode.value === "manual"
-            ? "Manual mode: enter a raw value, then run pre-screen to estimate EV."
-            : "Live pricing not available for this printing yet. Use Manual card details or enter raw value manually.";
-        return;
-      }
-
-      const roi = ev - raw - fee;
-      roiVal.textContent = formatMoney(roi, cur);
-      const outlook = computeOutlook(roi);
-
-      outlookBadge.className = `badge ${outlook.key}`;
-      outlookBadge.innerHTML = `<strong>${outlook.key === "good" ? "✓" : outlook.key === "warn" ? "•" : "×"}</strong> ${outlook.label}`;
+      srcVal.textContent = price?.source || (manual != null ? "Manual" : "—");
+      matchVal.textContent = price?.picked?.name ? (price.picked.name + (price.picked.number ? ` · #${price.picked.number}` : "")) : "—";
+      methodVal.textContent = price?.pricingMethod || (manual != null ? "Override" : "—");
     }
 
-    currencySel.addEventListener("change", ()=>{ applyROI(); if (ident && pricingMode.value==="live") fetchPriceAndUpdate(); });
-    feeInput.addEventListener("input", ()=>{ applyROI(); if (ident && pricingMode.value==="live") fetchPriceAndUpdate(); });
-    rawOverride.addEventListener("input", ()=>{ applyROI(); });
-    pricingMode.addEventListener("change", ()=>{
-      if (pricingMode.value === "manual"){
-        toastShow("Manual pricing: enter raw value to compute ROI.");
-        roiPill.textContent = "Manual pricing";
-      } else {
-        roiPill.textContent = "Live pricing";
-        if (ident) fetchPriceAndUpdate();
-      }
-      applyROI();
+    currencySel.addEventListener("change", applyPriceUI);
+    rawOverride.addEventListener("input", ()=>{
+      pricePill.textContent = rawOverride.value !== "" ? "Manual override" : (price?.source ? "Live" : "Optional");
+      applyPriceUI();
     });
 
     async function fetchPriceAndUpdate(){
       if (!ident) return;
-      if (pricingMode.value === "manual"){
-        price = null;
-        applyROI();
-        return;
-      }
+      // If user set manual override, don't force live pricing.
+      if (rawOverride.value !== "") { applyPriceUI(); return; }
 
-      identPill.textContent = "Pricing…";
+      pricePill.textContent = "Pricing…";
       devNote.textContent = "Last /api/price response";
       setDev("Pricing…", {});
-
-      const dist = gradeReport?.distribution || null;
-
-      // IMPORTANT: pass manualMeta so server can tighten matching (condition/printing)
-      const payload = {
-        card: ident,
-        currency: currencySel.value,
-        distribution: dist,
-        feeGBP: Number(feeInput.value || 15),
-        want: manualMeta ? { ...manualMeta } : null
-      };
 
       const { ok, status, json } = await fetchJson("/api/price", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ card: ident }),
         timeoutMs: 25000
       });
 
       setDev(String(status).startsWith("FETCH") ? "Price error" : `Price HTTP ${status}`, json);
 
       if (!ok){
-        identPill.textContent = "Price failed";
-        identText.textContent = "Live pricing failed. Use Manual card details or raw override.";
+        pricePill.textContent = "Price failed";
         price = null;
-        applyROI();
+        priceNote.textContent = "Live pricing failed. Use manual override if you want a raw value here.";
+        applyPriceUI();
         return;
       }
 
       price = json;
-      identPill.textContent = json?.source ? `Price: ${json.source}` : "Price: OK";
-      identText.textContent = json?.note ? json.note : "Card priced (where available).";
-      applyROI();
+      pricePill.textContent = json?.source ? `Live: ${json.source}` : "Live: OK";
+      priceNote.textContent = json?.note ? json.note : "Live raw price (best effort).";
+      applyPriceUI();
     }
 
-    // Manual details handlers (NEW)
-    function normalizeCollectorNumber(raw){
-      if (!raw) return null;
-      const s = String(raw).trim();
-      if (!s) return null;
-      if (s.includes("/")) return s.split("/")[0].trim();
-      return s;
+    // Overlay mapping (simple + understandable)
+    function confToLabel(c){
+      const v = Math.max(0, Math.min(1, Number(c || 0)));
+      if (v >= 0.78) return {key:"good", icon:"✓", label:"High"};
+      if (v >= 0.48) return {key:"warn", icon:"•", label:"Medium"};
+      return {key:"bad", icon:"×", label:"Low"};
     }
 
-    useManualBtn.addEventListener("click", async ()=>{
-      const name = String(manName.value || "").trim();
-      if (!name){
-        toastShow("Enter at least a card name.");
-        return;
+    function overlayFromSubgrades(rep){
+      const sg = rep?.subgrades || {};
+      const corners = Number(sg.corners ?? 0);
+      const edges = Number(sg.edges ?? 0);
+      const surface = Number(sg.surface ?? 0);
+
+      // normalize: assume 1..10
+      const n = (x) => Math.max(0, Math.min(1, (Number(x) || 0) / 10));
+
+      const cornerOpacity = 0.06 + (1 - n(corners)) * 0.55;  // worse corners -> stronger overlay
+      const edgeOpacity   = 0.05 + (1 - n(edges)) * 0.55;
+      const surfOpacity   = 0.04 + (1 - n(surface)) * 0.42;
+
+      cornerF.forEach(el=>el.style.opacity = String(cornerOpacity));
+      cornerB.forEach(el=>el.style.opacity = String(cornerOpacity));
+
+      ovEdgeTopF.style.opacity = String(edgeOpacity);
+      ovEdgeBotF.style.opacity = String(edgeOpacity);
+      ovEdgeTopB.style.opacity = String(edgeOpacity);
+      ovEdgeBotB.style.opacity = String(edgeOpacity);
+
+      ovSurfaceF.style.opacity = String(surfOpacity);
+      ovSurfaceB.style.opacity = String(surfOpacity);
+
+      // Labels
+      const worst = [
+        {k:"Corners", v:corners},
+        {k:"Edges", v:edges},
+        {k:"Surface", v:surface},
+        {k:"Centering", v:Number(sg.centering ?? 0)}
+      ].sort((a,b)=>a.v-b.v)[0];
+
+      ovLabelF.textContent = worst?.k ? `Watch: ${worst.k}` : "—";
+      ovLabelB.textContent = worst?.k ? `Watch: ${worst.k}` : "—";
+
+      frontOverlay.classList.add("show");
+      backOverlay.classList.add("show");
+    }
+
+    // Pre-grade UI
+    function setPreGradeUI(rep){
+      const ml = Number(rep.mostLikely ?? 0);
+      const label = rep.label || "";
+      gradeBig.innerHTML = `${isFinite(ml) && ml>0 ? ml.toFixed(1) : "—"} <small>${label}</small>`;
+      gradeLabel.textContent = label || "";
+
+      const r0 = rep.range?.[0];
+      const r1 = rep.range?.[1];
+      rangePill.textContent = `Range: ${isFinite(r0) ? Number(r0).toFixed(1) : "—"}–${isFinite(r1) ? Number(r1).toFixed(1) : "—"}`;
+
+      const conf = Math.max(0, Math.min(1, Number(rep.confidence || 0)));
+      confBar.style.width = `${Math.round(conf * 100)}%`;
+
+      const cInfo = confToLabel(conf);
+      confidenceBadge.className = `badge ${cInfo.key}`;
+      confidenceBadge.innerHTML = `<strong>${cInfo.icon}</strong> ${cInfo.label} confidence`;
+
+      const sg = rep.subgrades || {};
+      centEl.textContent = isFinite(Number(sg.centering)) ? Number(sg.centering).toFixed(1) : "—";
+      cornEl.textContent = isFinite(Number(sg.corners)) ? Number(sg.corners).toFixed(1) : "—";
+      edgeEl.textContent = isFinite(Number(sg.edges)) ? Number(sg.edges).toFixed(1) : "—";
+      surfEl.textContent = isFinite(Number(sg.surface)) ? Number(sg.surface).toFixed(1) : "—";
+
+      // Notes
+      issuesEl.innerHTML = "";
+      (rep.notes || []).slice(0,6).forEach(n=>{
+        const li = document.createElement("li");
+        li.textContent = n;
+        issuesEl.appendChild(li);
+      });
+      (rep.issues || []).slice(0,6).forEach(i=>{
+        const li = document.createElement("li");
+        li.textContent = `Issue: ${i}`;
+        issuesEl.appendChild(li);
+      });
+      if (!issuesEl.children.length){
+        issuesEl.innerHTML = "<li>No issues returned.</li>";
       }
 
-      // Build a “card” object compatible with /api/price and your UI
-      const card = {
-        game: String(manGame.value || "pokemon"),
-        name,
-        set: String(manSet.value || "").trim() || null,
-        setCode: null,
-        collectorNumber: normalizeCollectorNumber(String(manNum.value || "").trim()) || null,
-        variant: String(manVariant.value || "").trim() || null,
-        language: String(manLang.value || "English"),
-        confidence: 1.0,
-        displayName: name,
-        displaySet: String(manSet.value || "").trim() || null,
+      // Collector summary chips (clear + concise)
+      summaryChips.innerHTML = "";
+      const addChip = (k, v) => {
+        const el = document.createElement("span");
+        el.className = "chip";
+        el.innerHTML = `<b>${k}:</b> ${v}`;
+        summaryChips.appendChild(el);
       };
 
-      manualMeta = {
-        condition: String(manCond.value || "Near Mint"),
-        printing: String(manPrint.value || "Normal")
-      };
+      addChip("Expected", isFinite(ml)&&ml>0 ? ml.toFixed(1) : "—");
+      addChip("Range", (isFinite(r0)&&isFinite(r1)) ? `${Number(r0).toFixed(1)}–${Number(r1).toFixed(1)}` : "—");
+      addChip("Confidence", cInfo.label);
+      addChip("Strict", modeStrict.checked ? "On" : "Off");
 
-      ident = card;
-      identCandidates = [];
-      candidateWrap.style.display = "none";
-      candidateWrap.innerHTML = "";
+      // “Why it won’t grade higher” = the weakest areas + model issues
+      const pairs = [
+        {k:"Centering", v:Number(sg.centering ?? 0)},
+        {k:"Corners", v:Number(sg.corners ?? 0)},
+        {k:"Edges", v:Number(sg.edges ?? 0)},
+        {k:"Surface", v:Number(sg.surface ?? 0)},
+      ].filter(x=>isFinite(x.v)).sort((a,b)=>a.v-b.v);
 
-      manualPill.textContent = "In use";
-      identPill.textContent = "Manual";
-      gamePill.textContent = `Game: ${card.game}`;
-      cardPill.textContent = `Card: ${card.name}${card.set ? " ("+card.set+")" : ""}${card.collectorNumber ? " #"+card.collectorNumber : ""}`;
+      whyList.innerHTML = "";
+      (pairs.slice(0,2).length ? pairs.slice(0,2) : [{k:"—",v:0}]).forEach(p=>{
+        const li = document.createElement("li");
+        if (p.k === "—") li.textContent = "—";
+        else li.textContent = `${p.k} is the limiting factor (${p.v.toFixed(1)}).`;
+        whyList.appendChild(li);
+      });
 
-      identText.textContent = "Using manual details. Fetching live price…";
-      toastShow("Manual details applied.");
-      await fetchPriceAndUpdate();
-    });
+      (rep.issues || []).slice(0,2).forEach(i=>{
+        const li = document.createElement("li");
+        li.textContent = String(i);
+        whyList.appendChild(li);
+      });
 
-    clearManualBtn.addEventListener("click", ()=>{
-      manName.value = "";
-      manSet.value = "";
-      manNum.value = "";
-      manVariant.value = "Unlimited";
-      manCond.value = "Near Mint";
-      manPrint.value = "Normal";
-      manLang.value = "English";
-      manGame.value = "pokemon";
-      manualMeta = null;
-      manualPill.textContent = "Optional";
-      toastShow("Manual cleared.");
-    });
+      // “What to reshoot / check” = photo guidance + likely physical checks
+      fixList.innerHTML = "";
+      const fixHints = [];
+      if (conf < 0.55) fixHints.push("Reshoot: brighter light, less glare, sharper edges visible.");
+      if ((Number(sg.centering ?? 10)) < 8.8) fixHints.push("Centering: include full border on all sides for accuracy.");
+      if ((Number(sg.corners ?? 10)) < 9.0) fixHints.push("Corners: zoomed-in corner shot can confirm whitening or dings.");
+      if ((Number(sg.edges ?? 10)) < 9.0) fixHints.push("Edges: tilt under light to catch edge wear.");
+      if ((Number(sg.surface ?? 10)) < 9.0) fixHints.push("Surface: angle for scratches / print lines; avoid reflections.");
+
+      (fixHints.length ? fixHints : ["No reshoot suggestions returned."]).slice(0,4).forEach(t=>{
+        const li = document.createElement("li");
+        li.textContent = t;
+        fixList.appendChild(li);
+      });
+
+      // overlays
+      overlayFromSubgrades(rep);
+
+      resultPill.textContent = "Ready";
+    }
 
     // IDENTIFY
     identifyBtn.addEventListener("click", async ()=>{
@@ -1708,7 +1776,7 @@
       ident = null;
       identCandidates = [];
       price = null;
-      applyROI();
+      applyPriceUI();
 
       devNote.textContent = "Last /api/identify response";
       setDev("Identifying…", {});
@@ -1726,9 +1794,7 @@
 
         setDev(String(status).startsWith("FETCH") ? "Identify error" : `Identify HTTP ${status}`, json);
 
-        if (!ok){
-          throw new Error(json?.error || `Identify failed (HTTP ${status})`);
-        }
+        if (!ok) throw new Error(json?.error || `Identify failed (HTTP ${status})`);
 
         identCandidates = json?.candidates || [];
         const extracted = json?.extracted || null;
@@ -1736,7 +1802,7 @@
         if (!identCandidates.length){
           identPill.textContent = "No match";
           identText.textContent = extracted
-            ? `Extracted: ${extracted.name || "Unknown"} (${extracted.game || "unknown"}). No candidates from resolver.`
+            ? `Extracted: ${extracted.name || "Unknown"} (${extracted.game || "unknown"}). No candidates found.`
             : "No candidates returned.";
           gamePill.textContent = `Game: ${extracted?.game || "—"}`;
           cardPill.textContent = `Card: ${extracted?.name || "—"}`;
@@ -1753,7 +1819,7 @@
         if (bestConf >= 0.88 && identCandidates.length === 1){
           ident = best;
           identPill.textContent = "Identified";
-          identText.textContent = "High confidence match. Fetching live price…";
+          identText.textContent = "High confidence match.";
           toastShow("Card identified.");
           await fetchPriceAndUpdate();
         } else {
@@ -1765,50 +1831,19 @@
       } catch (e){
         console.error(e);
         identPill.textContent = "Identify failed";
-        identText.textContent = "Couldn’t identify reliably. Try a clearer front photo (name + set/number visible) or use Manual card details.";
+        identText.textContent = "Couldn’t identify reliably. Try a clearer front photo (name + set/number visible).";
         toastShow(e.message || "Identify failed.");
       }
     });
 
-    // PRE-SCREEN (grade + distribution + issues)
-    function setPreScreenUI(rep){
-      gradeBig.innerHTML = `${Number(rep.mostLikely).toFixed(1)} <small>${rep.label || ""}</small>`;
-      gradeLabel.textContent = rep.label || "";
-
-      rangePill.textContent = `Range: ${rep.range?.[0]?.toFixed?.(1) ?? "—"}–${rep.range?.[1]?.toFixed?.(1) ?? "—"}`;
-      const conf = Math.max(0, Math.min(1, Number(rep.confidence || 0)));
-      confBar.style.width = `${Math.round(conf * 100)}%`;
-
-      centEl.textContent = Number(rep.subgrades?.centering ?? 0).toFixed(1);
-      cornEl.textContent = Number(rep.subgrades?.corners ?? 0).toFixed(1);
-      edgeEl.textContent = Number(rep.subgrades?.edges ?? 0).toFixed(1);
-      surfEl.textContent = Number(rep.subgrades?.surface ?? 0).toFixed(1);
-
-      issuesEl.innerHTML = "";
-      (rep.notes || []).slice(0,6).forEach(n=>{
-        const li = document.createElement("li");
-        li.textContent = n;
-        issuesEl.appendChild(li);
-      });
-      (rep.issues || []).slice(0,6).forEach(i=>{
-        const li = document.createElement("li");
-        li.textContent = `Issue: ${i}`;
-        issuesEl.appendChild(li);
-      });
-      if (!issuesEl.children.length){
-        issuesEl.innerHTML = "<li>No issues returned.</li>";
-      }
-
-      resultPill.textContent = "Ready";
-    }
-
+    // PRE-GRADE
     runBtn.addEventListener("click", async ()=>{
       if (!canProceed()) return toastShow("Add front + back first.");
 
       setStatus("Preparing images…");
       runBtn.disabled = true;
       identifyBtn.disabled = true;
-      toastShow("Running pre-screen…");
+      toastShow("Generating report…");
 
       devNote.textContent = "Last /api/grade response";
       setDev("Grading…", {});
@@ -1817,51 +1852,43 @@
         const frontDataUrl = await fileToDataUrlCompressed(frontFile);
         const backDataUrl  = await fileToDataUrlCompressed(backFile);
 
-        setStatus("Grading…");
+        setStatus("Analyzing…");
 
         const { ok, status, json } = await fetchJson("/api/grade", {
           method: "POST",
           headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({
-            frontDataUrl,
-            backDataUrl,
-            strict: modeStrict.checked
-          }),
+          body: JSON.stringify({ frontDataUrl, backDataUrl, strict: modeStrict.checked }),
           timeoutMs: 35000
         });
 
         setDev(String(status).startsWith("FETCH") ? "Grade error" : `Grade HTTP ${status}`, json);
-
         if (!ok) throw new Error(json?.error || `Grade failed (HTTP ${status})`);
 
         gradeReport = json;
-        setPreScreenUI(json);
-        toastShow("Pre-screen complete.");
+        setPreGradeUI(json);
+
+        toastShow("Report ready.");
         setStatus("Done.");
 
         if (ident) await fetchPriceAndUpdate();
-        else applyROI();
+        else applyPriceUI();
 
         fullReport = {
           createdAt: new Date().toISOString(),
           inputs: { strict: modeStrict.checked, fast: modeFast.checked },
           identification: ident || null,
           identificationCandidates: identCandidates || [],
-          manualMeta: manualMeta || null,
-          grade: gradeReport,
-          price: price,
-          roi: {
-            currency: currencySel.value,
-            fee: Number(feeInput.value || 15),
-            rawOverride: rawOverride.value !== "" ? Number(rawOverride.value) : null
-          }
+          preGrade: gradeReport,
+          price: price || null,
+          priceOverride: rawOverride.value !== "" ? Number(rawOverride.value) : null,
+          currency: currencySel.value
         };
 
         downloadBtn.disabled = false;
         updateSteps();
       } catch (e){
         console.error(e);
-        toastShow(e.message || "Pre-screen failed.");
+        toastShow(e.message || "Report failed.");
         setStatus("Error. Try clearer photos.");
       } finally {
         runBtn.disabled = !canProceed();
@@ -1876,7 +1903,7 @@
       const blob = new Blob([JSON.stringify(fullReport, null, 2)], {type:"application/json"});
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `grd-prescreen-report.json`;
+      a.download = `grd-pregrade-report.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1885,6 +1912,11 @@
     });
 
     // Init
+    function setPreviewPlaceholders(){
+      frontImg.src = silhouetteSvg("Front");
+      backImg.src  = silhouetteSvg("Back");
+    }
+    setPreviewPlaceholders();
     resetRight();
     updateButtons();
     updateSteps();
